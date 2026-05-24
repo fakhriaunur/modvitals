@@ -6,6 +6,7 @@ import type {
   TriggerResponse,
 } from '@devvit/web/shared';
 import type { TaskRequest, TaskResponse } from '@devvit/web/server';
+import { reddit } from '@devvit/web/server';
 import {
   incrementPostCount,
   incrementCommentCount,
@@ -15,6 +16,7 @@ import {
   incrementOffenderScore,
 } from './metrics.js';
 import { generateReport } from './scheduler.js';
+import { formatReport, buildReportTitle } from './report.js';
 
 const app = new Hono();
 
@@ -119,7 +121,9 @@ app.post('/internal/triggers/mod-action', async (c) => {
  * Called by the cron scheduler to generate the daily health report.
  * Reads current period metrics from Redis, compares with previous period
  * for trends, aggregates all data (totals, top rules, top offenders, top mods),
- * and stores the last report timestamp.
+ * formats the report as a readable Markdown post, and submits it to the
+ * subreddit with mod-only visibility (distinguished + approved).
+ * Stores the last report timestamp in Redis on success.
  */
 app.post('/internal/scheduler/generate-report', async (c) => {
   const body = await c.req.json<TaskRequest>();
@@ -131,7 +135,7 @@ app.post('/internal/scheduler/generate-report', async (c) => {
   try {
     const report = await generateReport();
 
-    console.log('[scheduler:generate-report] completed', {
+    console.log('[scheduler:generate-report] aggregation complete', {
       dateKey: report.period.dateKey,
       posts: report.period.metrics.posts,
       comments: report.period.metrics.comments,
@@ -140,6 +144,43 @@ app.post('/internal/scheduler/generate-report', async (c) => {
       topOffenders: report.period.topOffenders.length,
       topMods: report.period.topMods.length,
       previousPeriodExists: report.previousPeriod.exists,
+    });
+
+    // Format the report into a Markdown post
+    const title = buildReportTitle(report);
+    const bodyText = formatReport(report);
+
+    console.log('[scheduler:generate-report] report formatted', {
+      title,
+      bodyLength: bodyText.length,
+    });
+
+    // Submit the report as a self-post to the current subreddit
+    // Use the reddit client singleton to post with mod scope
+    const post = await reddit.submitPost({
+      title,
+      text: bodyText,
+    });
+
+    console.log('[scheduler:generate-report] post submitted', {
+      postId: post.id,
+      postTitle: post.title,
+    });
+
+    // Make the post mod-only visibility:
+    // 1. Distinguish as a moderator post (green [M] shield, visible in mod discussions)
+    // 2. Approve the post (marks as reviewed by mod team)
+    try {
+      await post.distinguish();
+      await post.approve();
+      console.log('[scheduler:generate-report] post marked as distinguished mod post');
+    } catch (modErr) {
+      // Non-blocking: post was submitted even if mod-only flags fail
+      console.warn('[scheduler:generate-report] could not set mod-only flags', modErr);
+    }
+
+    console.log('[scheduler:generate-report] completed successfully', {
+      postId: post.id,
     });
 
     return c.json<TaskResponse>({ status: 'ok' }, 200);
