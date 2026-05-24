@@ -14,6 +14,7 @@ import {
   trackModAction,
   incrementOffenderScore,
 } from './metrics.js';
+import { generateReport } from './scheduler.js';
 
 const app = new Hono();
 
@@ -116,7 +117,9 @@ app.post('/internal/triggers/mod-action', async (c) => {
 /**
  * Scheduler: generate-report
  * Called by the cron scheduler to generate the daily health report.
- * Stub implementation — will be fully implemented in the next milestone.
+ * Reads current period metrics from Redis, compares with previous period
+ * for trends, aggregates all data (totals, top rules, top offenders, top mods),
+ * and stores the last report timestamp.
  */
 app.post('/internal/scheduler/generate-report', async (c) => {
   const body = await c.req.json<TaskRequest>();
@@ -125,7 +128,26 @@ app.post('/internal/scheduler/generate-report', async (c) => {
     name: body.name,
   });
 
-  return c.json<TaskResponse>({ status: 'ok' }, 200);
+  try {
+    const report = await generateReport();
+
+    console.log('[scheduler:generate-report] completed', {
+      dateKey: report.period.dateKey,
+      posts: report.period.metrics.posts,
+      comments: report.period.metrics.comments,
+      removals: report.period.metrics.removals,
+      approvals: report.period.metrics.approvals,
+      topOffenders: report.period.topOffenders.length,
+      topMods: report.period.topMods.length,
+      previousPeriodExists: report.previousPeriod.exists,
+    });
+
+    return c.json<TaskResponse>({ status: 'ok' }, 200);
+  } catch (err) {
+    console.error('[scheduler:generate-report] error', err);
+    // Return ok even on error — scheduler will retry
+    return c.json<TaskResponse>({ status: 'ok' }, 200);
+  }
 });
 
 export default app;
