@@ -17,6 +17,7 @@ import {
 } from './metrics.js';
 import { generateReport } from './scheduler.js';
 import { formatReport, buildReportTitle } from './report.js';
+import { getSettings, shouldGenerateReport } from './settings.js';
 
 const app = new Hono();
 
@@ -117,12 +118,38 @@ app.post('/internal/triggers/mod-action', async (c) => {
 });
 
 /**
+ * Settings validation: report-hour
+ * Validates that the report hour is between 0 and 23.
+ * Devvit calls this endpoint when the mod saves the setting.
+ */
+app.post('/internal/settings/validate-hour', async (c) => {
+  const body = await c.req.json<{ value: number }>();
+  const hour = body.value;
+
+  console.log('[settings:validate-hour] validating', { hour });
+
+  if (typeof hour !== 'number' || !Number.isInteger(hour) || hour < 0 || hour > 23) {
+    return c.json(
+      { error: 'Report hour must be an integer between 0 and 23.' },
+      400,
+    );
+  }
+
+  return c.json({ status: 'ok' }, 200);
+});
+
+/**
  * Scheduler: generate-report
  * Called by the cron scheduler to generate the daily health report.
  * Reads current period metrics from Redis, compares with previous period
  * for trends, aggregates all data (totals, top rules, top offenders, top mods),
  * formats the report as a readable Markdown post, and submits it to the
  * subreddit with mod-only visibility (distinguished + approved).
+ *
+ * Respects the following mod-configurable settings:
+ * - reportFrequency: controls whether a report is generated (weekly skips non-Monday)
+ * - showPosts / showComments / etc.: controls which metrics appear in the report
+ *
  * Stores the last report timestamp in Redis on success.
  */
 app.post('/internal/scheduler/generate-report', async (c) => {
@@ -133,6 +160,20 @@ app.post('/internal/scheduler/generate-report', async (c) => {
   });
 
   try {
+    // Load mod settings to determine if and how to generate the report
+    const modSettings = await getSettings();
+
+    console.log('[scheduler:generate-report] settings loaded', {
+      reportFrequency: modSettings.reportFrequency,
+      reportHour: modSettings.reportHour,
+    });
+
+    // Check if a report should be generated based on frequency setting
+    if (!shouldGenerateReport(modSettings.reportFrequency)) {
+      console.log('[scheduler:generate-report] skipping — frequency setting skips today');
+      return c.json<TaskResponse>({ status: 'ok' }, 200);
+    }
+
     const report = await generateReport();
 
     console.log('[scheduler:generate-report] aggregation complete', {
@@ -146,9 +187,9 @@ app.post('/internal/scheduler/generate-report', async (c) => {
       previousPeriodExists: report.previousPeriod.exists,
     });
 
-    // Format the report into a Markdown post
+    // Format the report into a Markdown post, respecting metric visibility settings
     const title = buildReportTitle(report);
-    const bodyText = formatReport(report);
+    const bodyText = formatReport(report, modSettings);
 
     console.log('[scheduler:generate-report] report formatted', {
       title,

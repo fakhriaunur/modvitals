@@ -1,4 +1,5 @@
 import type { ReportData, TrendData } from './scheduler.js';
+import type { ModVitalsSettings } from './settings.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,30 +94,55 @@ function formatOverview(report: ReportData): string {
 
 /**
  * Format the Activity Summary section.
+ * Respects metric visibility settings: showPosts, showComments, showRemovals, showApprovals.
  */
-function formatActivitySummary(report: ReportData): string {
+function formatActivitySummary(report: ReportData, settings?: ModVitalsSettings): string {
   const { metrics } = report.period;
+  const { trends } = report;
 
   const lines: string[] = ['### Activity Summary\n'];
 
-  if (metrics.posts === 0 && metrics.comments === 0 && metrics.removals === 0 && metrics.approvals === 0) {
+  const hasPostActivity = !settings || settings.showPosts || settings.showComments;
+  const hasModActivity = !settings || settings.showRemovals || settings.showApprovals;
+
+  if (!hasPostActivity && !hasModActivity) {
+    lines.push('Activity metrics are disabled in settings.\n');
+    return lines.join('\n');
+  }
+
+  const totalItems = (settings?.showPosts !== false ? metrics.posts : 0)
+    + (settings?.showComments !== false ? metrics.comments : 0);
+  const totalModActions = (settings?.showRemovals !== false ? metrics.removals : 0)
+    + (settings?.showApprovals !== false ? metrics.approvals : 0);
+
+  if (totalItems === 0 && totalModActions === 0) {
     lines.push('No user or moderator activity recorded.\n');
     return lines.join('\n');
   }
 
-  const totalItems = metrics.posts + metrics.comments;
-  const totalModActions = metrics.removals + metrics.approvals;
+  if (hasPostActivity) {
+    if (totalItems > 0) {
+      const visibleRemovals = settings?.showRemovals !== false ? metrics.removals : 0;
+      const removalRate = totalItems > 0 ? Math.round((visibleRemovals / totalItems) * 100) : 0;
+      const visibleApprovals = settings?.showApprovals !== false ? metrics.approvals : 0;
+      const approvalRate = totalItems > 0 ? Math.round((visibleApprovals / totalItems) * 100) : 0;
 
-  if (totalItems > 0) {
-    const removalRate = Math.round((metrics.removals / totalItems) * 100);
-    const approvalRate = Math.round((metrics.approvals / totalItems) * 100);
-    lines.push(`- **Total submissions:** ${totalItems}`);
-    lines.push(`- **Removal rate:** ${formatPct(removalRate)}`);
-    lines.push(`- **Approval rate:** ${formatPct(approvalRate)}`);
-  } else {
-    lines.push('- **Total submissions:** 0');
+      lines.push(`- **Total submissions:** ${totalItems}`);
+      if (settings?.showRemovals !== false) {
+        lines.push(`- **Removal rate:** ${formatPct(removalRate)}`);
+      }
+      if (settings?.showApprovals !== false) {
+        lines.push(`- **Approval rate:** ${formatPct(approvalRate)}`);
+      }
+    } else {
+      lines.push('- **Total submissions:** 0');
+    }
   }
-  lines.push(`- **Total mod actions:** ${totalModActions}`);
+
+  if (hasModActivity) {
+    lines.push(`- **Total mod actions:** ${totalModActions}`);
+  }
+
   lines.push('');
 
   return lines.join('\n');
@@ -220,7 +246,7 @@ function formatModActivity(report: ReportData): string {
 /**
  * Format the aggregated report data into a readable Markdown string.
  *
- * Sections:
+ * Sections (each can be disabled via mod settings):
  * 1. Overview — total reports, removals, approvals, posts, comments (with trends)
  * 2. Activity Summary — submission totals, removal/approval rates
  * 3. Rule Violations — top violated rules with counts
@@ -228,9 +254,10 @@ function formatModActivity(report: ReportData): string {
  * 5. Mod Activity — top moderators by action count + action type breakdown
  *
  * @param report - The aggregated report data from scheduler.ts
+ * @param settings - Optional mod settings to control section visibility
  * @returns A formatted Markdown string suitable for posting as a Reddit submission
  */
-export function formatReport(report: ReportData): string {
+export function formatReport(report: ReportData, settings?: ModVitalsSettings): string {
   const dateStr = formatDate(report.period.dateKey);
   const lines: string[] = [];
 
@@ -240,23 +267,43 @@ export function formatReport(report: ReportData): string {
   // Generated timestamp
   lines.push(`*Generated at ${new Date(report.generatedAt).toUTCString()}*\n`);
 
-  // Sections
+  // Always show Overview (it's the header summary)
   lines.push('---\n');
   lines.push(formatOverview(report));
+
+  // Conditionally show Activity Summary
   lines.push('---\n');
-  lines.push(formatActivitySummary(report));
-  lines.push('---\n');
-  lines.push(formatRuleViolations(report));
-  lines.push('---\n');
-  lines.push(formatRepeatOffenders(report));
-  lines.push('---\n');
-  lines.push(formatModActivity(report));
+
+  // Construct metric lines from enabled metrics
+  const enabledSections: string[] = [];
+
+  if (!settings || settings.showPosts || settings.showComments) {
+    enabledSections.push(formatActivitySummary(report, settings));
+  }
+
+  if (!settings || settings.showRuleViolations) {
+    enabledSections.push(formatRuleViolations(report));
+  }
+
+  if (!settings || settings.showTopOffenders) {
+    enabledSections.push(formatRepeatOffenders(report));
+  }
+
+  if (!settings || settings.showModActivity) {
+    enabledSections.push(formatModActivity(report));
+  }
+
+  // If no sections are enabled, show a note
+  if (enabledSections.length === 0) {
+    lines.push('*All metric sections are disabled in settings.*\n');
+  } else {
+    lines.push(enabledSections.join('---\n'));
+  }
 
   // Previous period indicator
   if (report.previousPeriod.exists && report.previousPeriod.dateKey) {
-    const prevDate = formatDate(report.previousPeriod.dateKey);
     lines.push(`---\n`);
-    lines.push(`*Comparison period: ${prevDate}*\n`);
+    lines.push(`*Comparison period: ${formatDate(report.previousPeriod.dateKey)}*\n`);
   }
 
   return lines.join('\n');

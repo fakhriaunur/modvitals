@@ -37,6 +37,69 @@
       }
     }
   },
+  "settings": {
+    "subreddit": {
+      "reportFrequency": {
+        "type": "select",
+        "label": "Report Frequency",
+        "helpText": "How often should the health report be generated?",
+        "options": [
+          { "label": "Daily", "value": "daily" },
+          { "label": "Weekly", "value": "weekly" }
+        ],
+        "defaultValue": "daily"
+      },
+      "reportHour": {
+        "type": "number",
+        "label": "Report Time (UTC)",
+        "helpText": "Hour of day (0-23 UTC) when the report should be generated. Default is 12 (noon UTC).",
+        "defaultValue": 12,
+        "validationEndpoint": "/internal/settings/validate-hour"
+      },
+      "showPosts": {
+        "type": "boolean",
+        "label": "Show Post Count",
+        "helpText": "Include post submission count in the report.",
+        "defaultValue": true
+      },
+      "showComments": {
+        "type": "boolean",
+        "label": "Show Comment Count",
+        "helpText": "Include comment submission count in the report.",
+        "defaultValue": true
+      },
+      "showRemovals": {
+        "type": "boolean",
+        "label": "Show Removal Count",
+        "helpText": "Include content removal count in the report.",
+        "defaultValue": true
+      },
+      "showApprovals": {
+        "type": "boolean",
+        "label": "Show Approval Count",
+        "helpText": "Include content approval count in the report.",
+        "defaultValue": true
+      },
+      "showRuleViolations": {
+        "type": "boolean",
+        "label": "Show Rule Violations",
+        "helpText": "Include the top violated rules section in the report.",
+        "defaultValue": true
+      },
+      "showTopOffenders": {
+        "type": "boolean",
+        "label": "Show Repeat Offenders",
+        "helpText": "Include the repeat offenders section in the report.",
+        "defaultValue": true
+      },
+      "showModActivity": {
+        "type": "boolean",
+        "label": "Show Mod Activity",
+        "helpText": "Include the moderator activity section in the report.",
+        "defaultValue": true
+      }
+    }
+  },
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build"
