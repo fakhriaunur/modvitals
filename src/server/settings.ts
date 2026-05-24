@@ -117,14 +117,27 @@ export async function getSettings(): Promise<ModVitalsSettings> {
 }
 
 /**
- * Determine if a report should be generated based on the configured frequency
- * and the current date.
+ * Determine if a report should be generated based on the configured frequency,
+ * report hour, and the current time.
  *
- * - Daily: always generate
- * - Weekly: only generate on Mondays (day-of-week === 1)
+ * The cron runs every minute (heartbeat). This function checks whether the
+ * configured conditions are met:
+ *
+ * - Daily: only generate when current UTC hour matches reportHour.
+ * - Weekly: only generate on Mondays when current UTC hour matches reportHour.
  */
-export function shouldGenerateReport(frequency: 'daily' | 'weekly'): boolean {
+export function shouldGenerateReport(
+  frequency: 'daily' | 'weekly',
+  reportHour: number = 12,
+): boolean {
+  const now = new Date();
+  const currentHour = now.getUTCHours();
+
+  // Hour guard – only run during the configured report hour
+  if (currentHour !== reportHour) return false;
+
+  // Frequency guard
   if (frequency === 'daily') return true;
   // weekly: only on Mondays
-  return new Date().getUTCDay() === 1;
+  return now.getUTCDay() === 1;
 }

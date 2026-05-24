@@ -15,6 +15,7 @@ import {
   incrementApprovalCount,
   trackModAction,
   incrementOffenderScore,
+  wasReportGeneratedToday,
 } from './metrics.js';
 import { generateReport } from './scheduler.js';
 import { formatReport, buildReportTitle } from './report.js';
@@ -169,9 +170,16 @@ app.post('/internal/scheduler/generate-report', async (c) => {
       reportHour: modSettings.reportHour,
     });
 
-    // Check if a report should be generated based on frequency setting
-    if (!shouldGenerateReport(modSettings.reportFrequency)) {
-      console.log('[scheduler:generate-report] skipping — frequency setting skips today');
+    // Check if a report should be generated based on frequency + hour settings
+    if (!shouldGenerateReport(modSettings.reportFrequency, modSettings.reportHour)) {
+      console.log('[scheduler:generate-report] skipping — settings (frequency/hour) not met');
+      return c.json<TaskResponse>({ status: 'ok' }, 200);
+    }
+
+    // Dedup: don't generate multiple reports per day
+    const alreadyGenerated = await wasReportGeneratedToday();
+    if (alreadyGenerated) {
+      console.log('[scheduler:generate-report] skipping — report already generated today');
       return c.json<TaskResponse>({ status: 'ok' }, 200);
     }
 

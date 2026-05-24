@@ -243,6 +243,17 @@ export async function getLastReportTimestamp(): Promise<string | undefined> {
 }
 
 /**
+ * Check if a report has already been generated today (same UTC date).
+ */
+export async function wasReportGeneratedToday(): Promise<boolean> {
+  const lastTs = await getLastReportTimestamp();
+  if (!lastTs) return false;
+  const lastDate = lastTs.slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  return lastDate === today;
+}
+
+/**
  * Store the current timestamp as the last report generation time.
  * Key: lastReport (string - ISO timestamp)
  */
