@@ -1,7 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "mod-vitals",
-  "version": "0.1.0",
+  "name": "modvitals",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
@@ -33,7 +32,7 @@
     "tasks": {
       "generate-report": {
         "endpoint": "/internal/scheduler/generate-report",
-        "cron": "0 12 * * *"
+        "cron": "* * * * *"
       }
     }
   },
@@ -44,8 +43,14 @@
         "label": "Report Frequency",
         "helpText": "How often should the health report be generated?",
         "options": [
-          { "label": "Daily", "value": "daily" },
-          { "label": "Weekly", "value": "weekly" }
+          {
+            "label": "Daily",
+            "value": "daily"
+          },
+          {
+            "label": "Weekly",
+            "value": "weekly"
+          }
         ],
         "defaultValue": "daily"
       },
@@ -103,5 +108,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build"
+  },
+  "dev": {
+    "subreddit": "modvitals_dev"
   }
 }

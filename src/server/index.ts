@@ -6,7 +6,8 @@ import type {
   TriggerResponse,
 } from '@devvit/web/shared';
 import type { TaskRequest, TaskResponse } from '@devvit/web/server';
-import { reddit } from '@devvit/web/server';
+import { reddit, createServer, getServerPort } from '@devvit/web/server';
+import { getRequestListener } from '@hono/node-server';
 import {
   incrementPostCount,
   incrementCommentCount,
@@ -230,6 +231,15 @@ app.post('/internal/scheduler/generate-report', async (c) => {
     // Return ok even on error — scheduler will retry
     return c.json<TaskResponse>({ status: 'ok' }, 200);
   }
+});
+
+// Create and start the HTTP server using Devvit's context-wrapping createServer
+// bridged through @hono/node-server's getRequestListener for Web Fetch API compat
+const port = getServerPort();
+const requestListener = getRequestListener(app.fetch);
+const server = createServer(requestListener);
+server.listen(port, () => {
+  console.log(`[modvitals] server listening on port ${port}`);
 });
 
 export default app;
