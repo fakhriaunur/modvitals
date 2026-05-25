@@ -107,7 +107,8 @@ export async function incrementOffenderScore(username: string, amount: number = 
 export async function getMetricsForDate(dateKey: string): Promise<Record<string, string>> {
   try {
     return await redis.hGetAll(`metrics:${dateKey}`);
-  } catch {
+  } catch (error) {
+    console.error('[metrics] failed to getMetricsForDate', { dateKey, error });
     return {};
   }
 }
@@ -136,7 +137,8 @@ export function getPreviousDateKey(dateKey?: string): string {
 export async function getTopOffenders(limit: number = 10): Promise<{ member: string; score: number }[]> {
   try {
     return await redis.zRange('offenders', 0, limit - 1, { reverse: true, by: 'rank' });
-  } catch {
+  } catch (error) {
+    console.error('[metrics] failed to getTopOffenders', { limit, error });
     return [];
   }
 }
@@ -149,7 +151,8 @@ export async function getTopOffenders(limit: number = 10): Promise<{ member: str
 export async function getModsForDate(dateKey: string): Promise<Record<string, string>> {
   try {
     return await redis.hGetAll(`mods:${dateKey}`);
-  } catch {
+  } catch (error) {
+    console.error('[metrics] failed to getModsForDate', { dateKey, error });
     return {};
   }
 }
@@ -178,7 +181,8 @@ export async function getTopMods(dateKey: string, limit: number = 10): Promise<{
 export async function getRulesForDate(dateKey: string): Promise<Record<string, string>> {
   try {
     return await redis.hGetAll(`rules:${dateKey}`);
-  } catch {
+  } catch (error) {
+    console.error('[metrics] failed to getRulesForDate', { dateKey, error });
     return {};
   }
 }
@@ -224,7 +228,8 @@ export async function getTopActionTypes(dateKey: string, limit: number = 10): Pr
       .map(([action, count]) => ({ action, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
-  } catch {
+  } catch (error) {
+    console.error('[metrics] failed to getTopActionTypes', { dateKey, limit, error });
     return [];
   }
 }
@@ -237,7 +242,8 @@ export async function getTopActionTypes(dateKey: string, limit: number = 10): Pr
 export async function getLastReportTimestamp(): Promise<string | undefined> {
   try {
     return await redis.get('lastReport') ?? undefined;
-  } catch {
+  } catch (error) {
+    console.error('[metrics] failed to getLastReportTimestamp', { error });
     return undefined;
   }
 }
