@@ -13,6 +13,7 @@ const KEY = {
   offenders: 'offenders',
   lastReport: 'lastReport',
   karma: (dateKey: string) => `karma:${dateKey}`,
+  modLastAction: 'modLastAction',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -77,6 +78,9 @@ export async function trackModAction(modUsername: string, actionType: string): P
   // Track per-mod action-type breakdown
   const actionKey = KEY.modActions(getDateKey());
   await redis.hIncrBy(actionKey, `${modUsername}:${actionType}`, 1);
+
+  // Record last action timestamp for inactivity detection
+  await trackModActionTimestamp(modUsername);
 }
 
 /**
@@ -282,6 +286,49 @@ export async function wasReportGeneratedToday(): Promise<boolean> {
  */
 export async function updateLastReportTimestamp(): Promise<void> {
   await redis.set(KEY.lastReport, new Date().toISOString());
+}
+
+// ---------------------------------------------------------------------------
+// Mod last action tracking (for inactivity detection)
+// ---------------------------------------------------------------------------
+
+/**
+ * Record the current timestamp as the last action time for a moderator.
+ * Key: modLastAction (hash: modUsername → ISO timestamp)
+ */
+export async function trackModActionTimestamp(modUsername: string): Promise<void> {
+  try {
+    await redis.hSet(KEY.modLastAction, modUsername, new Date().toISOString());
+  } catch (error) {
+    console.error('[metrics] failed to trackModActionTimestamp', { modUsername, error });
+  }
+}
+
+/**
+ * Get the last action timestamp for a moderator.
+ * Returns ISO timestamp string or undefined if never recorded.
+ */
+export async function getModLastActionTimestamp(modUsername: string): Promise<string | undefined> {
+  try {
+    return (await redis.hGet(KEY.modLastAction, modUsername)) ?? undefined;
+  } catch (error) {
+    console.error('[metrics] failed to getModLastActionTimestamp', { modUsername, error });
+    return undefined;
+  }
+}
+
+/**
+ * Get all mod last action timestamps.
+ * Key: modLastAction (hash: modUsername → ISO timestamp)
+ * Returns Record of modUsername → ISO timestamp string.
+ */
+export async function getAllModLastActionTimestamps(): Promise<Record<string, string>> {
+  try {
+    return await redis.hGetAll(KEY.modLastAction);
+  } catch (error) {
+    console.error('[metrics] failed to getAllModLastActionTimestamps', { error });
+    return {};
+  }
 }
 
 // ---------------------------------------------------------------------------

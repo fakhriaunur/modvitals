@@ -27,6 +27,7 @@ function makeEmptyReport(): ReportData {
       topMods: [],
       topOffenders: [],
       offenderKarma: {},
+      leaderboard: [],
     },
     previousPeriod: {
       exists: false,
@@ -66,6 +67,7 @@ function makeActiveReport(): ReportData {
         { username: 'offender2', score: 2 },
       ],
       offenderKarma: {},
+      leaderboard: [],
     },
     previousPeriod: {
       exists: true,
@@ -101,6 +103,7 @@ function makeReportWithNegativeTrends(): ReportData {
         { username: 'offender1', score: 2 },
       ],
       offenderKarma: {},
+      leaderboard: [],
     },
     previousPeriod: {
       exists: true,
@@ -152,6 +155,7 @@ function makeReportWithKarma(): ReportData {
           // no snoovatar, no subreddit karma
         },
       },
+      leaderboard: [],
     },
     previousPeriod: {
       exists: false,
@@ -336,6 +340,9 @@ const settingsHideKarma: ModVitalsSettings = {
   showTopOffenders: true,
   showModActivity: true,
   showKarmaStats: false,
+  showLeaderboard: true,
+  showInactiveAlerts: true,
+  inactiveThresholdDays: 5,
 };
 const karmaBodyHidden = formatReport(karmaReport, settingsHideKarma);
 assertNotContains(karmaBodyHidden, 'account', 'Account age hidden when showKarmaStats=false');
@@ -343,6 +350,109 @@ assertNotContains(karmaBodyHidden, 'karma', 'Karma label hidden when showKarmaSt
 // Username and incident count still shown
 assertContains(karmaBodyHidden, '**u/offender1**', 'Username still shown when karma hidden');
 assertContains(karmaBodyHidden, '4 incidents', 'Incident count still shown when karma hidden');
+
+// ---------------------------------------------------------------------------
+// Test: Leaderboard in Mod Activity section
+// ---------------------------------------------------------------------------
+console.log('\n--- Leaderboard & Inactive Alerts ---');
+
+function makeReportWithLeaderboard(): ReportData {
+  const base = makeActiveReport();
+  return {
+    ...base,
+    period: {
+      ...base.period,
+      leaderboard: [
+        { rank: 1, username: 'mod1', count: 10, pct: 50, isMostActive: true, lastActionTimestamp: new Date(Date.now() - 1 * 86400000).toISOString(), daysSinceLastAction: 1, isInactive: false },
+        { rank: 2, username: 'mod2', count: 6, pct: 30, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 3 * 86400000).toISOString(), daysSinceLastAction: 3, isInactive: false },
+        { rank: 3, username: 'mod3', count: 3, pct: 15, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 7 * 86400000).toISOString(), daysSinceLastAction: 7, isInactive: true },
+        { rank: 4, username: 'mod4', count: 1, pct: 5, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 10 * 86400000).toISOString(), daysSinceLastAction: 10, isInactive: true },
+      ],
+    },
+  };
+}
+
+const lbReport = makeReportWithLeaderboard();
+const lbBody = formatReport(lbReport);
+
+// Leaderboard section
+assertContains(lbBody, 'Mod Activity', 'Leaderboard: Mod Activity section present');
+assertContains(lbBody, 'Top Moderators (Leaderboard)', 'Leaderboard: section header present');
+assertContains(lbBody, '1. u/mod1', 'Leaderboard: ranked entry 1');
+assertContains(lbBody, '2. u/mod2', 'Leaderboard: ranked entry 2');
+assertContains(lbBody, '3. ⚠️ u/mod3', 'Leaderboard: inactive entry with warning');
+assertContains(lbBody, '4. ⚠️ u/mod4', 'Leaderboard: inactive entry 4 with warning');
+assertContains(lbBody, '[Most Active]', 'Leaderboard: Most Active badge');
+assertContains(lbBody, '(50%)', 'Leaderboard: percentage for mod1');
+assertContains(lbBody, '(30%)', 'Leaderboard: percentage for mod2');
+assertContains(lbBody, '(15%)', 'Leaderboard: percentage for mod3');
+assertContains(lbBody, '(5%)', 'Leaderboard: percentage for mod4');
+assertContains(lbBody, 'Inactive 7 days', 'Leaderboard: inactive days for mod3');
+assertContains(lbBody, 'Inactive 10 days', 'Leaderboard: inactive days for mod4');
+
+// Leaderboard disabled via settings
+const settingsNoLeaderboard: ModVitalsSettings = {
+  reportFrequency: 'daily',
+  reportHour: 12,
+  showPosts: true,
+  showComments: true,
+  showRemovals: true,
+  showApprovals: true,
+  showRuleViolations: true,
+  showTopOffenders: true,
+  showModActivity: true,
+  showKarmaStats: true,
+  showLeaderboard: false,
+  showInactiveAlerts: true,
+  inactiveThresholdDays: 5,
+};
+const lbBodyDisabled = formatReport(lbReport, settingsNoLeaderboard);
+assertNotContains(lbBodyDisabled, 'Top Moderators (Leaderboard)', 'Leaderboard disabled: no leaderboard header');
+assertContains(lbBodyDisabled, 'Top Moderators', 'Leaderboard disabled: simple mod list shown');
+
+// Inactive alerts disabled
+const settingsNoInactive: ModVitalsSettings = {
+  reportFrequency: 'daily',
+  reportHour: 12,
+  showPosts: true,
+  showComments: true,
+  showRemovals: true,
+  showApprovals: true,
+  showRuleViolations: true,
+  showTopOffenders: true,
+  showModActivity: true,
+  showKarmaStats: true,
+  showLeaderboard: true,
+  showInactiveAlerts: false,
+  inactiveThresholdDays: 5,
+};
+const lbBodyNoInactive = formatReport(lbReport, settingsNoInactive);
+assertNotContains(lbBodyNoInactive, '⚠️', 'Inactive disabled: no warning icon');
+assertNotContains(lbBodyNoInactive, 'Inactive', 'Inactive disabled: no inactive text');
+
+// All mods inactive with zero actions
+function makeReportAllInactiveZero(): ReportData {
+  const base = makeActiveReport();
+  return {
+    ...base,
+    period: {
+      ...base.period,
+      topMods: [
+        { username: 'mod1', count: 0 },
+        { username: 'mod2', count: 0 },
+      ],
+      leaderboard: [
+        { rank: 1, username: 'mod1', count: 0, pct: 0, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 10 * 86400000).toISOString(), daysSinceLastAction: 10, isInactive: true },
+        { rank: 2, username: 'mod2', count: 0, pct: 0, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 15 * 86400000).toISOString(), daysSinceLastAction: 15, isInactive: true },
+      ],
+      topActionTypes: [],
+    },
+  };
+}
+
+const allInactiveReport = makeReportAllInactiveZero();
+const allInactiveBody = formatReport(allInactiveReport);
+assertContains(allInactiveBody, 'All moderators are currently inactive', 'All inactive: special message shown');
 
 // ---------------------------------------------------------------------------
 // Summary

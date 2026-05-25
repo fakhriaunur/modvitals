@@ -36,6 +36,27 @@ app.post('/internal/settings/validate-hour', async (c) => {
   return c.json({ status: 'ok' }, 200);
 });
 
+/**
+ * Settings validation: inactive-threshold
+ * Validates that the inactive threshold is a positive integer >= 1.
+ * Devvit calls this endpoint when the mod saves the setting.
+ */
+app.post('/internal/settings/validate-threshold', async (c) => {
+  const body = await c.req.json<{ value: number }>();
+  const threshold = body.value;
+
+  console.log('[settings:validate-threshold] validating', { threshold });
+
+  if (typeof threshold !== 'number' || !Number.isInteger(threshold) || threshold < 1 || threshold > 365) {
+    return c.json(
+      { error: 'Threshold must be an integer between 1 and 365.' },
+      400,
+    );
+  }
+
+  return c.json({ status: 'ok' }, 200);
+});
+
 // Register route modules
 registerTriggers(app);
 registerScheduler(app);

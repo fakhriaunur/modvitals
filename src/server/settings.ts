@@ -15,6 +15,9 @@ export interface ModVitalsSettings {
   showTopOffenders: boolean;
   showModActivity: boolean;
   showKarmaStats: boolean;
+  showLeaderboard: boolean;
+  showInactiveAlerts: boolean;
+  inactiveThresholdDays: number;
 }
 
 export const DEFAULT_SETTINGS: ModVitalsSettings = {
@@ -28,6 +31,9 @@ export const DEFAULT_SETTINGS: ModVitalsSettings = {
   showTopOffenders: true,
   showModActivity: true,
   showKarmaStats: true,
+  showLeaderboard: true,
+  showInactiveAlerts: true,
+  inactiveThresholdDays: 5,
 };
 
 // ---------------------------------------------------------------------------
@@ -90,6 +96,9 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showTopOffenders,
       showModActivity,
       showKarmaStats,
+      showLeaderboard,
+      showInactiveAlerts,
+      inactiveThresholdDays,
     ] = await Promise.all([
       settings.get('reportFrequency'),
       settings.get('reportHour'),
@@ -101,6 +110,9 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       settings.get('showTopOffenders'),
       settings.get('showModActivity'),
       settings.get('showKarmaStats'),
+      settings.get('showLeaderboard'),
+      settings.get('showInactiveAlerts'),
+      settings.get('inactiveThresholdDays'),
     ]);
 
     return {
@@ -114,6 +126,9 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showTopOffenders: asBoolean(showTopOffenders, DEFAULT_SETTINGS.showTopOffenders),
       showModActivity: asBoolean(showModActivity, DEFAULT_SETTINGS.showModActivity),
       showKarmaStats: asBoolean(showKarmaStats, DEFAULT_SETTINGS.showKarmaStats),
+      showLeaderboard: asBoolean(showLeaderboard, DEFAULT_SETTINGS.showLeaderboard),
+      showInactiveAlerts: asBoolean(showInactiveAlerts, DEFAULT_SETTINGS.showInactiveAlerts),
+      inactiveThresholdDays: asNumber(inactiveThresholdDays, DEFAULT_SETTINGS.inactiveThresholdDays),
     };
   } catch (err) {
     console.warn('[settings] failed to load settings, using defaults', err);

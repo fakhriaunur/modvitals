@@ -1,4 +1,4 @@
-import type { ReportData, TrendData } from './scheduler-logic.js';
+import type { ReportData, TrendData, LeaderboardEntry } from './scheduler-logic.js';
 import type { ModVitalsSettings } from './settings.js';
 import { formatDate } from './date-utils.js';
 import {
@@ -260,20 +260,80 @@ function formatRepeatOffenders(report: ReportData, settings?: ModVitalsSettings)
 }
 
 /**
- * Format the Mod Activity section.
+ * Format a single leaderboard entry line.
  */
-function formatModActivity(report: ReportData): string {
-  const { topMods } = report.period;
-  const { topActionTypes } = report.period;
+function formatLeaderboardEntry(entry: LeaderboardEntry): string {
+  const countLabel = `${entry.count} action${entry.count !== 1 ? 's' : ''}`;
+  const pctLabel = `(${entry.pct}%)`;
+
+  // Build the line based on activity status
+  let line: string;
+
+  if (entry.isInactive && entry.count === 0) {
+    // Inactive mod with zero actions
+    const inactivedays = entry.daysSinceLastAction ?? 0;
+    line = `⚠️ u/${entry.username} — ${countLabel} ${pctLabel} — Inactive ${inactivedays} days`;
+  } else if (entry.isInactive) {
+    // Inactive mod with some actions
+    const inactivedays = entry.daysSinceLastAction ?? 0;
+    line = `⚠️ u/${entry.username} — ${countLabel} ${pctLabel} — Inactive ${inactivedays} days`;
+  } else if (entry.isMostActive) {
+    line = `u/${entry.username} — ${countLabel} ${pctLabel} [Most Active]`;
+  } else {
+    line = `u/${entry.username} — ${countLabel} ${pctLabel}`;
+  }
+
+  return line;
+}
+
+/**
+ * Format the Mod Activity section.
+ * Supports ranked leaderboard, workload balance percentages, and inactive alerts.
+ */
+function formatModActivity(report: ReportData, settings?: ModVitalsSettings): string {
+  const { topMods, topActionTypes, leaderboard } = report.period;
 
   const lines: string[] = ['### Mod Activity\n'];
+
+  const showLeaderboardFlag = !settings || settings.showLeaderboard;
+  const showInactiveFlag = !settings || settings.showInactiveAlerts;
 
   if (topMods.length === 0 && topActionTypes.length === 0) {
     lines.push('No moderator activity recorded.\n');
     return lines.join('\n');
   }
 
-  if (topMods.length > 0) {
+  // --- Leaderboard section ---
+  if (showLeaderboardFlag && leaderboard.length > 0) {
+    // Check if all leaderboard entries are inactive
+    const allInactive = leaderboard.length > 0 && leaderboard.every((e) => e.isInactive);
+    const allZero = leaderboard.every((e) => e.count === 0);
+
+    if (allInactive && allZero) {
+      // Special message when all mods are inactive
+      lines.push('All moderators are currently inactive — no actions taken in this period.\n');
+    } else {
+      lines.push('**Top Moderators (Leaderboard):**\n');
+
+      const entries = leaderboard.map((entry, idx) => {
+        const prefix = `${idx + 1}. `;
+
+        if (showInactiveFlag && entry.isInactive) {
+          return `${prefix}⚠️ u/${entry.username} — ${entry.count} action${entry.count !== 1 ? 's' : ''} (${entry.pct}%) — Inactive ${entry.daysSinceLastAction ?? 0} days`;
+        }
+
+        if (entry.isMostActive) {
+          return `${prefix}u/${entry.username} — ${entry.count} action${entry.count !== 1 ? 's' : ''} (${entry.pct}%) [Most Active]`;
+        }
+
+        return `${prefix}u/${entry.username} — ${entry.count} action${entry.count !== 1 ? 's' : ''} (${entry.pct}%)`;
+      });
+
+      lines.push(entries.join('\n'));
+      lines.push('');
+    }
+  } else if (topMods.length > 0) {
+    // Fallback to simple list when leaderboard is disabled
     lines.push('**Top Moderators:**\n');
     lines.push(
       formatBulletList(
@@ -285,6 +345,7 @@ function formatModActivity(report: ReportData): string {
     lines.push('');
   }
 
+  // --- Action Breakdown ---
   if (topActionTypes.length > 0) {
     lines.push('**Action Breakdown:**\n');
     lines.push(
@@ -351,7 +412,7 @@ export function formatReport(report: ReportData, settings?: ModVitalsSettings): 
   }
 
   if (!settings || settings.showModActivity) {
-    enabledSections.push(formatModActivity(report));
+    enabledSections.push(formatModActivity(report, settings));
   }
 
   // If no sections are enabled, show a note

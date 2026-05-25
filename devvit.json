@@ -108,6 +108,25 @@
         "label": "Show Karma Stats",
         "helpText": "Include karma statistics (account age, link/comment karma) for repeat offenders.",
         "defaultValue": true
+      },
+      "showLeaderboard": {
+        "type": "boolean",
+        "label": "Show Mod Leaderboard",
+        "helpText": "Show ranked leaderboard of top moderators by action count with workload percentages.",
+        "defaultValue": true
+      },
+      "showInactiveAlerts": {
+        "type": "boolean",
+        "label": "Show Inactive Mod Alerts",
+        "helpText": "Flag moderators who have been inactive beyond the threshold.",
+        "defaultValue": true
+      },
+      "inactiveThresholdDays": {
+        "type": "number",
+        "label": "Inactive Threshold (Days)",
+        "helpText": "Number of days without action before a moderator is flagged as inactive. Default: 5.",
+        "defaultValue": 5,
+        "validationEndpoint": "/internal/settings/validate-threshold"
       }
     }
   },

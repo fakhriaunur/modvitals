@@ -6,7 +6,7 @@
  * and aggregateReport (pure aggregation from data).
  */
 
-import { parseMetrics, computeTrend, aggregateReport } from './scheduler-logic.js';
+import { parseMetrics, computeTrend, aggregateReport, computeLeaderboard } from './scheduler-logic.js';
 import type { PeriodMetrics } from './scheduler-logic.js';
 
 // ---------------------------------------------------------------------------
@@ -160,6 +160,7 @@ assertStrictEqual(reportWithPrev.previousPeriod.dateKey, '20260523', 'prev dateK
 assertDeepEqual(reportWithPrev.trends, { posts: 50, comments: 40, removals: 60, approvals: 67 }, 'trends computed correctly');
 assertStrictEqual(reportWithPrev.lastReportTimestamp, '2026-05-23T12:00:00.000Z', 'lastReportTimestamp set');
 assertStrictEqual(reportWithPrev.generatedAt, '2026-05-24T12:00:00.000Z', 'generatedAt set');
+assertDeepEqual(reportWithPrev.period.leaderboard, [], 'leaderboard empty when not provided');
 
 // Without previous data
 const reportNoPrev = aggregateReport(
@@ -201,6 +202,112 @@ const reportEmpty = aggregateReport(
 assertStrictEqual(reportEmpty.period.metrics.posts, 0, 'empty metrics posts is 0');
 assertStrictEqual(reportEmpty.period.topRules.length, 0, 'empty topRules');
 assertStrictEqual(reportEmpty.period.topOffenders.length, 0, 'empty topOffenders');
+
+// ---------------------------------------------------------------------------
+// computeLeaderboard
+// ---------------------------------------------------------------------------
+console.log('\n--- computeLeaderboard ---');
+
+const mods = [
+  { username: 'mod1', count: 50 },
+  { username: 'mod2', count: 30 },
+  { username: 'mod3', count: 15 },
+  { username: 'mod4', count: 5 },
+];
+
+const now = new Date();
+const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString();
+const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+const oneDayAgo = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString();
+
+const lastActionTimestamps: Record<string, string> = {
+  mod1: oneDayAgo,
+  mod2: threeDaysAgo,
+  mod3: fiveDaysAgo,
+};
+
+// Normal leaderboard (threshold 5 days)
+const board = computeLeaderboard(
+  mods,
+  100,
+  lastActionTimestamps,
+  undefined,
+  5,
+  5,
+);
+
+assertStrictEqual(board.length, 4, 'leaderboard has 4 entries');
+assertStrictEqual(board[0].rank, 1, 'entry 1 rank is 1');
+assertStrictEqual(board[0].username, 'mod1', 'entry 1 is mod1');
+assertStrictEqual(board[0].count, 50, 'entry 1 count is 50');
+assertStrictEqual(board[0].pct, 50, 'entry 1 is 50%');
+assert(board[0].isMostActive === true, 'entry 1 is most active');
+assert(board[0].isInactive === false, 'mod1 is not inactive (1 day ago)');
+
+assertStrictEqual(board[1].rank, 2, 'entry 2 rank is 2');
+assertStrictEqual(board[1].username, 'mod2', 'entry 2 is mod2');
+assertStrictEqual(board[1].pct, 30, 'entry 2 is 30%');
+assert(board[1].isMostActive === false, 'entry 2 is not most active');
+assert(board[1].isInactive === false, 'mod2 is not inactive (3 days ago, threshold 5)');
+
+assertStrictEqual(board[2].rank, 3, 'entry 3 rank is 3');
+assertStrictEqual(board[2].username, 'mod3', 'entry 3 is mod3');
+assertStrictEqual(board[2].pct, 15, 'entry 3 is 15%');
+assert(board[2].isInactive === true, 'mod3 is inactive (5 days ago, threshold 5)');
+
+assertStrictEqual(board[3].rank, 4, 'entry 4 rank is 4');
+assertStrictEqual(board[3].username, 'mod4', 'entry 4 is mod4');
+assertStrictEqual(board[3].pct, 5, 'entry 4 is 5%');
+assert(board[3].isMostActive === false, 'entry 4 is not most active');
+assert(board[3].isInactive === true, 'mod4 has no timestamp, so is inactive');
+assert(board[3].daysSinceLastAction === undefined, 'mod4 daysSinceLastAction undefined (no timestamp available)');
+
+// Empty mods list
+const emptyBoard = computeLeaderboard([], 0, {}, undefined, 5, 5);
+assertStrictEqual(emptyBoard.length, 0, 'empty mods returns empty leaderboard');
+
+// Single mod
+const singleBoard = computeLeaderboard(
+  [{ username: 'mod1', count: 10 }],
+  10,
+  { mod1: oneDayAgo },
+  undefined,
+  5,
+  5,
+);
+assertStrictEqual(singleBoard.length, 1, 'single mod leaderboard has 1 entry');
+assert(singleBoard[0].isMostActive === true, 'single mod is most active');
+assert(singleBoard[0].pct === 100, 'single mod is 100%');
+
+// All mods have zero count
+const zeroMods = [
+  { username: 'mod1', count: 0 },
+  { username: 'mod2', count: 0 },
+];
+const zeroBoard = computeLeaderboard(
+  zeroMods,
+  0,
+  {},
+  undefined,
+  5,
+  5,
+);
+assertStrictEqual(zeroBoard.length, 2, 'zero-count mods still appear');
+assert(zeroBoard[0].isMostActive === false, 'zero-count mod1 not most active');
+assert(zeroBoard[0].isInactive === true, 'zero-count mod1 is inactive (no timestamp)');
+
+// Stricter threshold (2 days)
+const strictBoard = computeLeaderboard(
+  mods,
+  100,
+  lastActionTimestamps,
+  undefined,
+  2,
+  5,
+);
+assert(strictBoard[0].isInactive === false, 'mod1 not inactive with 2-day threshold (1 day ago)');
+assert(strictBoard[1].isInactive === true, 'mod2 inactive with 2-day threshold (3 days ago)');
+assert(strictBoard[2].isInactive === true, 'mod3 inactive with 2-day threshold (5 days ago)');
 
 // ---------------------------------------------------------------------------
 // Summary

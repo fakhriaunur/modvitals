@@ -56,7 +56,9 @@ export default function registerScheduler(app: Hono): void {
         return c.json<TaskResponse>({ status: 'ok' }, 200);
       }
 
-      const report = await generateReport();
+      const report = await generateReport(
+        modSettings.inactiveThresholdDays,
+      );
 
       console.log('[scheduler:generate-report] aggregation complete', {
         dateKey: report.period.dateKey,
@@ -66,6 +68,7 @@ export default function registerScheduler(app: Hono): void {
         approvals: report.period.metrics.approvals,
         topOffenders: report.period.topOffenders.length,
         topMods: report.period.topMods.length,
+        leaderboardSize: report.period.leaderboard.length,
         previousPeriodExists: report.previousPeriod.exists,
       });
 
