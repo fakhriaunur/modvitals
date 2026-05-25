@@ -89,7 +89,7 @@ function formatOverview(report: ReportData): string {
     return lines.join('\n');
   }
 
-  lines.push(`- **Total Reports:** ${formatWithTrend(metrics.reports, trends.posts !== null ? null : null)}`);
+  lines.push(`- **Total Reports:** ${formatWithTrend(metrics.reports, trends.reports)}`);
   lines.push(`- **Removals:** ${formatWithTrend(metrics.removals, trends.removals)}`);
   lines.push(`- **Approvals:** ${formatWithTrend(metrics.approvals, trends.approvals)}`);
   lines.push(`- **Posts:** ${formatWithTrend(metrics.posts, trends.posts)}`);
@@ -187,6 +187,7 @@ function formatOffenderLine(
   username: string,
   score: number,
   karma?: KarmaInfo | null,
+  now?: Date,
 ): string {
   let parts: string[] = [];
 
@@ -203,7 +204,7 @@ function formatOffenderLine(
     const stats: string[] = [];
 
     // Account age
-    stats.push(formatAccountAge(karma.accountCreatedAt));
+    stats.push(formatAccountAge(karma.accountCreatedAt, now ?? new Date()));
 
     // Total karma (link + comment)
     const totalKarma = formatTotalKarma(karma.linkKarma, karma.commentKarma);
@@ -240,6 +241,7 @@ function formatRepeatOffenders(report: ReportData, settings?: ModVitalsSettings)
   }
 
   const showKarma = !settings || settings.showKarmaStats;
+  const now = new Date(report.generatedAt);
 
   lines.push(
     formatBulletList(
@@ -247,7 +249,7 @@ function formatRepeatOffenders(report: ReportData, settings?: ModVitalsSettings)
       (o) => {
         if (showKarma) {
           const karma = offenderKarma?.[o.username];
-          return formatOffenderLine(o.username, o.score, karma);
+          return formatOffenderLine(o.username, o.score, karma, now);
         }
         return `**u/${o.username}** — ${o.score} incident${o.score !== 1 ? 's' : ''}`;
       },
@@ -257,33 +259,6 @@ function formatRepeatOffenders(report: ReportData, settings?: ModVitalsSettings)
   lines.push('');
 
   return lines.join('\n');
-}
-
-/**
- * Format a single leaderboard entry line.
- */
-function formatLeaderboardEntry(entry: LeaderboardEntry): string {
-  const countLabel = `${entry.count} action${entry.count !== 1 ? 's' : ''}`;
-  const pctLabel = `(${entry.pct}%)`;
-
-  // Build the line based on activity status
-  let line: string;
-
-  if (entry.isInactive && entry.count === 0) {
-    // Inactive mod with zero actions
-    const inactivedays = entry.daysSinceLastAction ?? 0;
-    line = `⚠️ u/${entry.username} — ${countLabel} ${pctLabel} — Inactive ${inactivedays} days`;
-  } else if (entry.isInactive) {
-    // Inactive mod with some actions
-    const inactivedays = entry.daysSinceLastAction ?? 0;
-    line = `⚠️ u/${entry.username} — ${countLabel} ${pctLabel} — Inactive ${inactivedays} days`;
-  } else if (entry.isMostActive) {
-    line = `u/${entry.username} — ${countLabel} ${pctLabel} [Most Active]`;
-  } else {
-    line = `u/${entry.username} — ${countLabel} ${pctLabel}`;
-  }
-
-  return line;
 }
 
 /**

@@ -157,7 +157,7 @@ const reportWithPrev = aggregateReport(
 assertStrictEqual(reportWithPrev.period.dateKey, '20260524', 'sets dateKey');
 assertStrictEqual(reportWithPrev.previousPeriod.exists, true, 'prev exists flag true');
 assertStrictEqual(reportWithPrev.previousPeriod.dateKey, '20260523', 'prev dateKey set');
-assertDeepEqual(reportWithPrev.trends, { posts: 50, comments: 40, removals: 60, approvals: 67 }, 'trends computed correctly');
+assertDeepEqual(reportWithPrev.trends, { posts: 50, comments: 40, removals: 60, approvals: 67, reports: 200 }, 'trends computed correctly');
 assertStrictEqual(reportWithPrev.lastReportTimestamp, '2026-05-23T12:00:00.000Z', 'lastReportTimestamp set');
 assertStrictEqual(reportWithPrev.generatedAt, '2026-05-24T12:00:00.000Z', 'generatedAt set');
 assertDeepEqual(reportWithPrev.period.leaderboard, [], 'leaderboard empty when not provided');
@@ -181,7 +181,7 @@ const reportNoPrev = aggregateReport(
 assertStrictEqual(reportNoPrev.previousPeriod.exists, false, 'prev exists flag false when null');
 assertStrictEqual(reportNoPrev.previousPeriod.dateKey, null, 'prev dateKey null when no prev');
 assertStrictEqual(reportNoPrev.previousPeriod.metrics, null, 'prev metrics null when no prev');
-assertDeepEqual(reportNoPrev.trends, { posts: null, comments: null, removals: null, approvals: null }, 'trends all null when no prev');
+assertDeepEqual(reportNoPrev.trends, { posts: null, comments: null, removals: null, approvals: null, reports: null }, 'trends all null when no prev');
 
 // Empty metrics
 const reportEmpty = aggregateReport(

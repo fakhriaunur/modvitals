@@ -36,7 +36,7 @@ function makeEmptyReport(): ReportData {
       topRules: [],
       topMods: [],
     },
-    trends: { posts: null, comments: null, removals: null, approvals: null },
+    trends: { posts: null, comments: null, removals: null, approvals: null, reports: null },
     lastReportTimestamp: undefined,
   };
 }
@@ -81,6 +81,7 @@ function makeActiveReport(): ReportData {
       comments: 40,    // 40% increase
       removals: 60,    // 60% increase
       approvals: 67,   // 67% increase
+      reports: 200,    // 200% increase (3 vs 1)
     },
     lastReportTimestamp: '2026-05-23T12:00:00.000Z',
   };
@@ -117,6 +118,7 @@ function makeReportWithNegativeTrends(): ReportData {
       comments: -75,
       removals: -80,
       approvals: -80,
+      reports: -100,   // 100% decrease (0 vs 2)
     },
     lastReportTimestamp: '2026-05-23T12:00:00.000Z',
   };
@@ -164,7 +166,7 @@ function makeReportWithKarma(): ReportData {
       topRules: [],
       topMods: [],
     },
-    trends: { posts: null, comments: null, removals: null, approvals: null },
+    trends: { posts: null, comments: null, removals: null, approvals: null, reports: null },
     lastReportTimestamp: undefined,
   };
 }

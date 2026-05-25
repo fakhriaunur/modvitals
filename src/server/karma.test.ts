@@ -67,18 +67,18 @@ const now = new Date();
 
 // Created just now — 0mo
 const zeroMo = new Date(now);
-assertStrictEqual(formatAccountAge(zeroMo), '0mo account', 'just created shows 0mo');
+assertStrictEqual(formatAccountAge(zeroMo, now), '0mo account', 'just created shows 0mo');
 
 // Created 3 months ago
 const threeMoAgo = new Date(now);
 threeMoAgo.setUTCMonth(now.getUTCMonth() - 3);
-assertStrictEqual(formatAccountAge(threeMoAgo), '3mo account', '3 months ago');
+assertStrictEqual(formatAccountAge(threeMoAgo, now), '3mo account', '3 months ago');
 
 // Created 1 year ago
 const oneYearAgo = new Date(now);
 oneYearAgo.setUTCFullYear(now.getUTCFullYear() - 1);
 // The exact output depends on current month, but should have "1y"
-const oneYearResult = formatAccountAge(oneYearAgo);
+const oneYearResult = formatAccountAge(oneYearAgo, now);
 assert(
   oneYearResult.includes('y') && oneYearResult.includes('account'),
   `1 year ago returns year-based format: "${oneYearResult}"`,
@@ -88,12 +88,12 @@ assert(
 const twoYearsThreeMoAgo = new Date(now);
 twoYearsThreeMoAgo.setUTCFullYear(now.getUTCFullYear() - 2);
 twoYearsThreeMoAgo.setUTCMonth(now.getUTCMonth() - 3);
-assertStrictEqual(formatAccountAge(twoYearsThreeMoAgo), '2y 3mo account', '2 years 3 months ago');
+assertStrictEqual(formatAccountAge(twoYearsThreeMoAgo, now), '2y 3mo account', '2 years 3 months ago');
 
 // Created long ago (5 years)
 const fiveYearsAgo = new Date(now);
 fiveYearsAgo.setUTCFullYear(now.getUTCFullYear() - 5);
-const fiveYearResult = formatAccountAge(fiveYearsAgo);
+const fiveYearResult = formatAccountAge(fiveYearsAgo, now);
 assert(
   fiveYearResult.includes('5y'),
   `5 years ago shows "5y": "${fiveYearResult}"`,

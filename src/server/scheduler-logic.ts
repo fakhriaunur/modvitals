@@ -63,6 +63,7 @@ export interface TrendData {
   comments: number | null;
   removals: number | null;
   approvals: number | null;
+  reports: number | null;
 }
 
 export interface ReportData {
@@ -226,6 +227,7 @@ export function aggregateReport(
     comments: computeTrend(currentMetrics.comments, prevMetrics?.comments ?? null),
     removals: computeTrend(currentMetrics.removals, prevMetrics?.removals ?? null),
     approvals: computeTrend(currentMetrics.approvals, prevMetrics?.approvals ?? null),
+    reports: computeTrend(currentMetrics.reports, prevMetrics?.reports ?? null),
   };
 
   return {

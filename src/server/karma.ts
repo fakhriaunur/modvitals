@@ -170,11 +170,12 @@ export function formatKarmaDisplay(value: number): string {
 /**
  * Format account age from creation date to a human-readable string.
  * Examples: "3mo account", "1y 2mo account", "0mo account"
+ *
+ * Accepts a currentDate parameter for deterministic/pure usage (no new Date() internally).
  */
-export function formatAccountAge(createdAt: Date): string {
-  const now = new Date();
-  let years = now.getUTCFullYear() - createdAt.getUTCFullYear();
-  let months = now.getUTCMonth() - createdAt.getUTCMonth();
+export function formatAccountAge(createdAt: Date, currentDate: Date): string {
+  let years = currentDate.getUTCFullYear() - createdAt.getUTCFullYear();
+  let months = currentDate.getUTCMonth() - createdAt.getUTCMonth();
 
   if (months < 0) {
     years--;
