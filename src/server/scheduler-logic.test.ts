@@ -6,7 +6,7 @@
  * and aggregateReport (pure aggregation from data).
  */
 
-import { parseMetrics, computeTrend, aggregateReport, computeLeaderboard } from './scheduler-logic.js';
+import { parseMetrics, computeTrend, aggregateReport, computeLeaderboard, detectAnomalies } from './scheduler-logic.js';
 import type { PeriodMetrics } from './scheduler-logic.js';
 
 // ---------------------------------------------------------------------------
@@ -308,6 +308,75 @@ const strictBoard = computeLeaderboard(
 assert(strictBoard[0].isInactive === false, 'mod1 not inactive with 2-day threshold (1 day ago)');
 assert(strictBoard[1].isInactive === true, 'mod2 inactive with 2-day threshold (3 days ago)');
 assert(strictBoard[2].isInactive === true, 'mod3 inactive with 2-day threshold (5 days ago)');
+
+// ---------------------------------------------------------------------------
+// detectAnomalies
+// ---------------------------------------------------------------------------
+console.log('\n--- detectAnomalies ---');
+
+// Helper to build a snapshot with uniform values
+function makeSnapshot(value: number): PeriodMetrics {
+  return { posts: value, comments: value, removals: value, approvals: value, reports: value };
+}
+
+// Sufficient data (7 snapshots) with an anomaly
+const sevenSnapshots = Array.from({ length: 7 }, () => makeSnapshot(10));
+const highCurrent: PeriodMetrics = { posts: 10, comments: 10, removals: 30, approvals: 10, reports: 10 };
+const anomalyResult = detectAnomalies(highCurrent, sevenSnapshots);
+
+assert(anomalyResult.hasSufficientData === true, 'hasSufficientData true with 7 snapshots');
+assertStrictEqual(anomalyResult.baselineDays, 7, 'baselineDays is 7');
+assertStrictEqual(anomalyResult.alerts.length, 1, 'one anomaly detected (removals 30 > 2x avg of 10)');
+assertStrictEqual(anomalyResult.alerts[0].metric, 'removals', 'anomaly metric is removals');
+assertStrictEqual(anomalyResult.alerts[0].currentValue, 30, 'current value is 30');
+assertStrictEqual(anomalyResult.alerts[0].averageValue, 10, 'average value is 10');
+assertStrictEqual(anomalyResult.alerts[0].percentOfAverage, 300, '300% of average');
+
+// Multiple anomalies
+const multiHigh: PeriodMetrics = { posts: 30, comments: 10, removals: 25, approvals: 10, reports: 10 };
+const multiResult = detectAnomalies(multiHigh, sevenSnapshots);
+assert(multiResult.hasSufficientData === true, 'hasSufficientData still true');
+assertStrictEqual(multiResult.alerts.length, 2, 'two anomalies detected (posts 30, removals 25 > 2x avg of 10)');
+assertStrictEqual(multiResult.alerts[0].metric, 'posts', 'first anomaly is posts');
+assertStrictEqual(multiResult.alerts[1].metric, 'removals', 'second anomaly is removals');
+
+// No anomalies — all metrics within normal range
+const normalMetrics: PeriodMetrics = { posts: 15, comments: 19, removals: 5, approvals: 8, reports: 2 };
+const noAnomalyResult = detectAnomalies(normalMetrics, sevenSnapshots);
+assert(noAnomalyResult.hasSufficientData === true, 'hasSufficientData true');
+assertStrictEqual(noAnomalyResult.alerts.length, 0, 'no alerts when all metrics within 2x range');
+
+// Insufficient data (0 snapshots)
+const zeroResult = detectAnomalies(normalMetrics, []);
+assert(zeroResult.hasSufficientData === false, 'hasSufficientData false with 0 snapshots');
+assertStrictEqual(zeroResult.baselineDays, 0, 'baselineDays is 0 with empty');
+assertStrictEqual(zeroResult.alerts.length, 0, 'no alerts with insufficient data');
+
+// Insufficient data (3 snapshots)
+const threeSnapshots = Array.from({ length: 3 }, () => makeSnapshot(10));
+const threeResult = detectAnomalies(normalMetrics, threeSnapshots);
+assert(threeResult.hasSufficientData === false, 'hasSufficientData false with 3 snapshots');
+assertStrictEqual(threeResult.baselineDays, 3, 'baselineDays is 3');
+assertStrictEqual(threeResult.alerts.length, 0, 'no alerts with 3 snapshots');
+
+// Exactly 7 snapshots, all equal — should have sufficent data
+const exactly7 = Array.from({ length: 7 }, () => makeSnapshot(5));
+const exact7Result = detectAnomalies(normalMetrics, exactly7);
+assert(exact7Result.hasSufficientData === true, 'exactly 7 snapshots has sufficient data');
+
+// Zero rolling average is skipped (avoids division by zero)
+const zeroAvgSnapshots = Array.from({ length: 7 }, () => makeSnapshot(0));
+const zeroAvgCurrent: PeriodMetrics = { posts: 10, comments: 0, removals: 0, approvals: 0, reports: 0 };
+const zeroAvgResult = detectAnomalies(zeroAvgCurrent, zeroAvgSnapshots);
+assert(zeroAvgResult.hasSufficientData === true, 'hasSufficientData true even with zero avg');
+assertStrictEqual(zeroAvgResult.alerts.length, 0, 'no alerts when rolling average is zero (skipped)');
+
+// Verify format: metric labels match expected keys
+const labelCheck = detectAnomalies(highCurrent, sevenSnapshots);
+const metricLabels = ['posts', 'comments', 'removals', 'approvals', 'reports'];
+for (const ml of metricLabels) {
+  assert(typeof ml === 'string', `metric label "${ml}" is a string`);
+}
 
 // ---------------------------------------------------------------------------
 // Summary

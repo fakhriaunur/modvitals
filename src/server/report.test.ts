@@ -8,7 +8,7 @@
  * Or: node --experimental-strip-types src/server/report.test.ts
  */
 
-import type { ReportData } from './scheduler-logic.js';
+import type { ReportData, AnomalyData } from './scheduler-logic.js';
 import { formatReport, buildReportTitle } from './report.js';
 import type { ModVitalsSettings } from './settings.js';
 
@@ -343,6 +343,7 @@ const settingsHideKarma: ModVitalsSettings = {
   showLeaderboard: true,
   showInactiveAlerts: true,
   inactiveThresholdDays: 5,
+  showAnomalyAlerts: true,
 };
 const karmaBodyHidden = formatReport(karmaReport, settingsHideKarma);
 assertNotContains(karmaBodyHidden, 'account', 'Account age hidden when showKarmaStats=false');
@@ -405,6 +406,7 @@ const settingsNoLeaderboard: ModVitalsSettings = {
   showLeaderboard: false,
   showInactiveAlerts: true,
   inactiveThresholdDays: 5,
+  showAnomalyAlerts: true,
 };
 const lbBodyDisabled = formatReport(lbReport, settingsNoLeaderboard);
 assertNotContains(lbBodyDisabled, 'Top Moderators (Leaderboard)', 'Leaderboard disabled: no leaderboard header');
@@ -425,6 +427,7 @@ const settingsNoInactive: ModVitalsSettings = {
   showLeaderboard: true,
   showInactiveAlerts: false,
   inactiveThresholdDays: 5,
+  showAnomalyAlerts: true,
 };
 const lbBodyNoInactive = formatReport(lbReport, settingsNoInactive);
 assertNotContains(lbBodyNoInactive, '⚠️', 'Inactive disabled: no warning icon');
@@ -453,6 +456,114 @@ function makeReportAllInactiveZero(): ReportData {
 const allInactiveReport = makeReportAllInactiveZero();
 const allInactiveBody = formatReport(allInactiveReport);
 assertContains(allInactiveBody, 'All moderators are currently inactive', 'All inactive: special message shown');
+
+// ---------------------------------------------------------------------------
+// Test: Anomaly Alerts
+// ---------------------------------------------------------------------------
+console.log('\n--- Anomaly Alerts ---');
+
+function makeReportWithAnomalyData(anomalyData?: AnomalyData): ReportData {
+  const base = makeActiveReport();
+  return { ...base, anomalyData };
+}
+
+// Anomaly alerts section appears when anomalies detected
+const anomalyWithAlerts: AnomalyData = {
+  hasSufficientData: true,
+  alerts: [{
+    metric: 'removals',
+    label: 'removals',
+    currentValue: 12,
+    averageValue: 4,
+    percentOfAverage: 300,
+  }],
+  baselineDays: 7,
+};
+
+const alertReport = makeReportWithAnomalyData(anomalyWithAlerts);
+const alertBody = formatReport(alertReport);
+assertContains(alertBody, '⚠️ Anomaly Alerts', 'Anomaly Alerts section header present');
+assertContains(alertBody, '300% more removals', 'Alert shows percentage for removals');
+assertContains(alertBody, '12 vs 4 avg', 'Alert shows current vs average values');
+assertContains(alertBody, 'Possible brigading or spam wave', 'Alert shows possible cause message');
+
+// Multiple alerts
+const multiAlerts: AnomalyData = {
+  hasSufficientData: true,
+  alerts: [
+    { metric: 'posts', label: 'posts', currentValue: 30, averageValue: 10, percentOfAverage: 300 },
+    { metric: 'removals', label: 'removals', currentValue: 25, averageValue: 8, percentOfAverage: 313 },
+  ],
+  baselineDays: 7,
+};
+const multiAlertBody = formatReport(makeReportWithAnomalyData(multiAlerts));
+assertContains(multiAlertBody, '300% more posts', 'First alert shows posts spike');
+assertContains(multiAlertBody, '313% more removals', 'Second alert shows removals spike');
+assertContains(multiAlertBody, '⚠️ Unusual activity detected', 'Each alert has warning prefix');
+
+// No alert section when no anomalies (has sufficient data, zero alerts)
+const noAlertsData: AnomalyData = {
+  hasSufficientData: true,
+  alerts: [],
+  baselineDays: 7,
+};
+const noAlertBody = formatReport(makeReportWithAnomalyData(noAlertsData));
+assertNotContains(noAlertBody, '⚠️ Anomaly Alerts', 'No alerts section when no anomalies with sufficient data');
+assertNotContains(noAlertBody, 'Anomaly Detection', 'No anomaly detection header when no anomalies');
+
+// Collecting baseline message when insufficient data
+const insufficientData: AnomalyData = {
+  hasSufficientData: false,
+  alerts: [],
+  baselineDays: 3,
+};
+const baselineBody = formatReport(makeReportWithAnomalyData(insufficientData));
+assertContains(baselineBody, '⚠️ Anomaly Detection', 'Baseline section header present');
+assertContains(baselineBody, 'Collecting baseline', 'Baseline message shown');
+assertContains(baselineBody, '3 days collected', 'Shows days collected count');
+
+// 5 days collected (also insufficient)
+const fiveDayData: AnomalyData = {
+  hasSufficientData: false,
+  alerts: [],
+  baselineDays: 5,
+};
+const fiveDayBody = formatReport(makeReportWithAnomalyData(fiveDayData));
+assertContains(fiveDayBody, '5 days collected', 'Shows 5 days collected');
+
+// Anomaly alerts hidden when setting is disabled
+const settingsAnomalyDisabled: ModVitalsSettings = {
+  reportFrequency: 'daily',
+  reportHour: 12,
+  showPosts: true,
+  showComments: true,
+  showRemovals: true,
+  showApprovals: true,
+  showRuleViolations: true,
+  showTopOffenders: true,
+  showModActivity: true,
+  showKarmaStats: true,
+  showLeaderboard: true,
+  showInactiveAlerts: true,
+  inactiveThresholdDays: 5,
+  showAnomalyAlerts: false,
+};
+const disabledBody = formatReport(makeReportWithAnomalyData(anomalyWithAlerts), settingsAnomalyDisabled);
+assertNotContains(disabledBody, 'Anomaly Alerts', 'Anomaly alerts hidden when showAnomalyAlerts disabled');
+assertNotContains(disabledBody, 'Anomaly Detection', 'Anomaly detection header hidden when disabled');
+assertNotContains(disabledBody, 'Collecting baseline', 'Baseline message hidden when disabled');
+
+// Undefined anomalyData (report before feature existed) — no alerts section
+const noAnomalyFieldBody = formatReport(makeActiveReport());
+assertNotContains(noAnomalyFieldBody, 'Anomaly Alerts', 'No alerts section when anomalyData undefined');
+assertNotContains(noAnomalyFieldBody, 'Anomaly Detection', 'No anomaly detection header when undefined');
+
+// Alerts section appears at TOP of report (before Overview)
+const alertSectionIdx = alertBody.indexOf('⚠️ Anomaly Alerts');
+const overviewIdx = alertBody.indexOf('### Overview');
+assert(alertSectionIdx >= 0, 'Anomaly alerts section exists in report');
+assert(overviewIdx >= 0, 'Overview section exists in report');
+assert(alertSectionIdx < overviewIdx, 'Anomaly alerts appear BEFORE the Overview section');
 
 // ---------------------------------------------------------------------------
 // Summary

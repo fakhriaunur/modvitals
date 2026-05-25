@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
 import type { TaskRequest, TaskResponse } from '@devvit/web/server';
-import { generateReport } from '../scheduler-logic.js';
+import { generateReport, detectAnomalies, parseMetrics } from '../scheduler-logic.js';
 import { formatReport, buildReportTitle } from '../report.js';
 import { postReportToSubreddit } from '../posting.js';
 import { getSettings, shouldGenerateReport } from '../settings.js';
-import { wasReportGeneratedToday } from '../metrics.js';
+import { wasReportGeneratedToday, storeDailySnapshot, getMultipleSnapshots } from '../metrics.js';
 import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
+import { getRelativeDateKey } from '../date-utils.js';
 
 // ---------------------------------------------------------------------------
 // Route registration
@@ -88,6 +89,38 @@ export default function registerScheduler(app: Hono): void {
         console.log('[scheduler:generate-report] karma enrichment complete', {
           usersFetched: usernames.length,
           successful: [...karmaMap.values()].filter((v) => v !== null).length,
+        });
+      }
+
+      // Store daily snapshot for rolling average computation (anomaly detection)
+      const currentMetrics = report.period.metrics;
+      await storeDailySnapshot(report.period.dateKey, currentMetrics);
+
+      // Compute anomaly alerts from 7-day rolling average if enabled
+      if (modSettings.showAnomalyAlerts) {
+        // Generate date keys for the previous 7 days (excluding today)
+        const dateKeys: string[] = [];
+        for (let i = 1; i <= 7; i++) {
+          dateKeys.push(getRelativeDateKey(report.period.dateKey, -i));
+        }
+
+        // Fetch snapshots from Redis in parallel
+        const snapshots = await getMultipleSnapshots(dateKeys);
+
+        // Parse snapshots into typed PeriodMetrics (skip empty/missing days)
+        const snapshotMetrics = dateKeys
+          .map((dk) => snapshots[dk])
+          .filter((raw): raw is Record<string, string> => !!raw && Object.keys(raw).length > 0)
+          .map((raw) => parseMetrics(raw));
+
+        // Detect anomalies
+        report.anomalyData = detectAnomalies(currentMetrics, snapshotMetrics);
+
+        console.log('[scheduler:generate-report] anomaly detection complete', {
+          hasSufficientData: report.anomalyData.hasSufficientData,
+          baselineDays: report.anomalyData.baselineDays,
+          alertsCount: report.anomalyData.alerts.length,
+          alerts: report.anomalyData.alerts.map((a) => `${a.label}(${a.percentOfAverage}%)`),
         });
       }
 

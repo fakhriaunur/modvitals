@@ -127,6 +127,12 @@
         "helpText": "Number of days without action before a moderator is flagged as inactive. Default: 5.",
         "defaultValue": 5,
         "validationEndpoint": "/internal/settings/validate-threshold"
+      },
+      "showAnomalyAlerts": {
+        "type": "boolean",
+        "label": "Show Anomaly Alerts",
+        "helpText": "Flag unusual activity spikes (2x above 7-day rolling average) in the report header. Detects potential brigading or spam waves.",
+        "defaultValue": true
       }
     }
   },

@@ -77,6 +77,40 @@ export interface ReportData {
   };
   trends: TrendData;
   lastReportTimestamp: string | undefined;
+  /** Anomaly/spike detection results (optional, computed after snapshot fetch) */
+  anomalyData?: AnomalyData;
+}
+
+// ---------------------------------------------------------------------------
+// Anomaly Detection Types
+// ---------------------------------------------------------------------------
+
+/**
+ * A single anomaly alert for a metric that exceeds the 2x rolling average threshold.
+ */
+export interface AnomalyAlert {
+  /** Internal metric key (e.g. 'removals', 'posts', 'comments') */
+  metric: string;
+  /** Human-readable label for the metric (e.g. 'removals', 'posts') */
+  label: string;
+  /** Today's value for this metric */
+  currentValue: number;
+  /** 7-day rolling average (rounded to 1 decimal) */
+  averageValue: number;
+  /** Percent of average, e.g. 300 means 3x the average */
+  percentOfAverage: number;
+}
+
+/**
+ * Result of anomaly detection — either insufficient data or a list of alerts.
+ */
+export interface AnomalyData {
+  /** True when at least 7 days of historical snapshots are available */
+  hasSufficientData: boolean;
+  /** Metric alerts that exceed the 2x threshold (empty when nothing anomalous) */
+  alerts: AnomalyAlert[];
+  /** Number of days of snapshot data actually available */
+  baselineDays: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +218,7 @@ export function aggregateReport(
   generatedAt?: string,
   offenderKarma?: Record<string, KarmaInfo | null>,
   leaderboard?: LeaderboardEntry[],
+  anomalyData?: AnomalyData,
 ): ReportData {
   const prevExists = prevMetrics !== null;
   const trends: TrendData = {
@@ -214,6 +249,90 @@ export function aggregateReport(
     },
     trends,
     lastReportTimestamp,
+    anomalyData,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Anomaly Detection (pure function)
+// ---------------------------------------------------------------------------
+
+/**
+ * ANSI standard metric labels for human-readable display.
+ */
+const METRIC_LABELS: Record<string, string> = {
+  posts: 'posts',
+  comments: 'comments',
+  removals: 'removals',
+  approvals: 'approvals',
+  reports: 'reports',
+};
+
+/**
+ * Detect statistically significant anomalies by comparing current metrics
+ * against a 7-day rolling average stored in daily snapshots.
+ *
+ * Flags metrics where the current value exceeds 2x the rolling average.
+ * Returns an AnomalyData object with alerts for anomalous metrics.
+ *
+ * Edge cases:
+ * - Fewer than 7 snapshots → hasSufficientData: false with baselineDays count
+ * - Zero snapshots → hasSufficientData: false with 0 baselineDays
+ * - Zero rolling average for a metric → cannot compare, skipped
+ * - All metrics within normal range → empty alerts array
+ *
+ * @param currentMetrics - Today's parsed metrics
+ * @param snapshots - Parsed metrics from previous days (typically last 7)
+ * @returns AnomalyData with alerts for any metrics exceeding 2x average
+ */
+export function detectAnomalies(
+  currentMetrics: PeriodMetrics,
+  snapshots: PeriodMetrics[],
+): AnomalyData {
+  const dayCount = snapshots.length;
+  const hasSufficientData = dayCount >= 7;
+
+  if (!hasSufficientData) {
+    return { hasSufficientData: false, alerts: [], baselineDays: dayCount };
+  }
+
+  // Compute rolling average for each metric
+  const metricNames: (keyof PeriodMetrics)[] = [
+    'posts', 'comments', 'removals', 'approvals', 'reports',
+  ];
+  const averages: Record<string, number> = {};
+
+  for (const metric of metricNames) {
+    const sum = snapshots.reduce((acc, s) => acc + (s[metric] ?? 0), 0);
+    averages[metric] = sum / snapshots.length;
+  }
+
+  // Detect anomalies: current > 2x rolling average
+  const alerts: AnomalyAlert[] = [];
+
+  for (const metric of metricNames) {
+    const current = currentMetrics[metric] ?? 0;
+    const avg = averages[metric];
+
+    // Skip if rolling average is zero (can't compute meaningful ratio)
+    if (avg <= 0) continue;
+
+    if (current > avg * 2) {
+      const percentOfAverage = Math.round((current / avg) * 100);
+      alerts.push({
+        metric,
+        label: METRIC_LABELS[metric] ?? metric,
+        currentValue: current,
+        averageValue: Math.round(avg * 10) / 10,
+        percentOfAverage,
+      });
+    }
+  }
+
+  return {
+    hasSufficientData: true,
+    alerts,
+    baselineDays: dayCount,
   };
 }
 

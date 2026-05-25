@@ -14,6 +14,7 @@ const KEY = {
   lastReport: 'lastReport',
   karma: (dateKey: string) => `karma:${dateKey}`,
   modLastAction: 'modLastAction',
+  snapshots: (dateKey: string) => `snapshots:${dateKey}`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -358,6 +359,55 @@ export async function storeKarmaSnapshot(
  * Returns a Record of username → { linkKarma, commentKarma }.
  * Returns empty Record if the key does not exist.
  */
+// ---------------------------------------------------------------------------
+// Daily snapshot helpers (for anomaly / rolling-average detection)
+// ---------------------------------------------------------------------------
+
+/**
+ * Store the current day's metrics as a snapshot in Redis for rolling average computation.
+ * Key: snapshots:{dateKey} (hash: metric name → value as string)
+ * Called after each report generation so we can compute 7-day rolling averages
+ * in future reports.
+ */
+export async function storeDailySnapshot(
+  dateKey: string,
+  metrics: { posts: number; comments: number; removals: number; approvals: number; reports: number },
+): Promise<void> {
+  try {
+    const key = KEY.snapshots(dateKey);
+    await redis.hSet(key, {
+      posts: String(metrics.posts),
+      comments: String(metrics.comments),
+      removals: String(metrics.removals),
+      approvals: String(metrics.approvals),
+      reports: String(metrics.reports),
+    });
+  } catch (error) {
+    console.error('[metrics] failed to storeDailySnapshot', { dateKey, error });
+  }
+}
+
+/**
+ * Get multiple daily snapshots by their date keys.
+ * Each returned entry is a Record of metric name → string value.
+ * Keys that don't exist will return empty objects.
+ */
+export async function getMultipleSnapshots(
+  dateKeys: string[],
+): Promise<Record<string, Record<string, string>>> {
+  const entries = await Promise.all(
+    dateKeys.map(async (dk) => {
+      const data = await redis.hGetAll(KEY.snapshots(dk));
+      return { dateKey: dk, data } as const;
+    }),
+  );
+  const result: Record<string, Record<string, string>> = {};
+  for (const { dateKey, data } of entries) {
+    result[dateKey] = data;
+  }
+  return result;
+}
+
 export async function getKarmaSnapshotsForDate(
   dateKey: string,
 ): Promise<Record<string, { linkKarma: number; commentKarma: number }>> {

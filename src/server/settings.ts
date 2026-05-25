@@ -18,6 +18,7 @@ export interface ModVitalsSettings {
   showLeaderboard: boolean;
   showInactiveAlerts: boolean;
   inactiveThresholdDays: number;
+  showAnomalyAlerts: boolean;
 }
 
 export const DEFAULT_SETTINGS: ModVitalsSettings = {
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: ModVitalsSettings = {
   showLeaderboard: true,
   showInactiveAlerts: true,
   inactiveThresholdDays: 5,
+  showAnomalyAlerts: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -99,6 +101,7 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showLeaderboard,
       showInactiveAlerts,
       inactiveThresholdDays,
+      showAnomalyAlerts,
     ] = await Promise.all([
       settings.get('reportFrequency'),
       settings.get('reportHour'),
@@ -113,6 +116,7 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       settings.get('showLeaderboard'),
       settings.get('showInactiveAlerts'),
       settings.get('inactiveThresholdDays'),
+      settings.get('showAnomalyAlerts'),
     ]);
 
     return {
@@ -129,6 +133,7 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showLeaderboard: asBoolean(showLeaderboard, DEFAULT_SETTINGS.showLeaderboard),
       showInactiveAlerts: asBoolean(showInactiveAlerts, DEFAULT_SETTINGS.showInactiveAlerts),
       inactiveThresholdDays: asNumber(inactiveThresholdDays, DEFAULT_SETTINGS.inactiveThresholdDays),
+      showAnomalyAlerts: asBoolean(showAnomalyAlerts, DEFAULT_SETTINGS.showAnomalyAlerts),
     };
   } catch (err) {
     console.warn('[settings] failed to load settings, using defaults', err);

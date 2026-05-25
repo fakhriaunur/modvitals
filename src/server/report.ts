@@ -1,4 +1,4 @@
-import type { ReportData, TrendData, LeaderboardEntry } from './scheduler-logic.js';
+import type { ReportData, TrendData, LeaderboardEntry, AnomalyData } from './scheduler-logic.js';
 import type { ModVitalsSettings } from './settings.js';
 import { formatDate } from './date-utils.js';
 import {
@@ -362,6 +362,56 @@ function formatModActivity(report: ReportData, settings?: ModVitalsSettings): st
 }
 
 // ---------------------------------------------------------------------------
+// Anomaly Alerts Section
+// ---------------------------------------------------------------------------
+
+/**
+ * Format the anomaly alerts section for the report.
+ *
+ * When anomalies are detected, produces a top-of-report section like:
+ *
+ *   ### ⚠️ Anomaly Alerts
+ *
+ *   - ⚠️ Unusual activity detected: 300% more removals than average (12 vs 4 avg).
+ *     Possible brigading or spam wave.
+ *
+ * When insufficient history (< 7 days), produces a baseline message:
+ *
+ *   Collecting baseline — anomaly detection requires 7 days of data (X days collected).
+ *
+ * Returns an empty string when no alerts and sufficient data (no section shown).
+ */
+function formatAlertsSection(anomalyData?: AnomalyData, showAnomalyAlerts?: boolean): string {
+  if (!showAnomalyAlerts || !anomalyData) return '';
+
+  const lines: string[] = [];
+
+  if (!anomalyData.hasSufficientData) {
+    lines.push('### ⚠️ Anomaly Detection\n');
+    const days = anomalyData.baselineDays;
+    lines.push(
+      `Collecting baseline — anomaly detection requires 7 days of data (${days} day${days !== 1 ? 's' : ''} collected so far).\n`,
+    );
+    return lines.join('\n');
+  }
+
+  if (anomalyData.alerts.length === 0) return '';
+
+  lines.push('### ⚠️ Anomaly Alerts\n');
+
+  for (const alert of anomalyData.alerts) {
+    const label = alert.label.charAt(0).toUpperCase() + alert.label.slice(1);
+    lines.push(
+      `- ⚠️ Unusual activity detected: ${alert.percentOfAverage}% more ${alert.label} than average (${alert.currentValue} vs ${Math.round(alert.averageValue)} avg). Possible brigading or spam wave.`,
+    );
+  }
+
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Main formatter
 // ---------------------------------------------------------------------------
 
@@ -388,6 +438,16 @@ export function formatReport(report: ReportData, settings?: ModVitalsSettings): 
 
   // Generated timestamp
   lines.push(`*Generated at ${new Date(report.generatedAt).toUTCString()}*\n`);
+
+  // Anomaly alerts section — appears at the top when anomalies detected
+  const alertsSection = formatAlertsSection(
+    report.anomalyData,
+    !settings || settings.showAnomalyAlerts,
+  );
+  if (alertsSection) {
+    lines.push(alertsSection);
+    lines.push('---\n');
+  }
 
   // Always show Overview (it's the header summary)
   lines.push('---\n');
