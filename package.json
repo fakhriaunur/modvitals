@@ -10,6 +10,7 @@
     "dev": "devvit playtest",
     "launch": "npm run deploy && devvit publish",
     "login": "devvit login",
+    "test": "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts",
     "type-check": "tsc --build"
   },
   "engines": {

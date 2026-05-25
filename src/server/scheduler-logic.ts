@@ -60,7 +60,7 @@ export interface ReportData {
  * Parse a metrics hash record into typed PeriodMetrics.
  * All missing/non-numeric fields default to 0.
  */
-function parseMetrics(record: Record<string, string>): PeriodMetrics {
+export function parseMetrics(record: Record<string, string>): PeriodMetrics {
   return {
     posts: parseInt(record.posts ?? '0', 10) || 0,
     comments: parseInt(record.comments ?? '0', 10) || 0,
@@ -75,9 +75,58 @@ function parseMetrics(record: Record<string, string>): PeriodMetrics {
  * If previous is null or 0, returns null (no meaningful trend).
  * Otherwise returns the percentage change as a number.
  */
-function computeTrend(current: number, previous: number | null): number | null {
+export function computeTrend(current: number, previous: number | null): number | null {
   if (previous === null || previous === 0) return null;
   return Math.round(((current - previous) / previous) * 100);
+}
+
+/**
+ * Pure aggregation function that builds a ReportData from already-fetched data.
+ * No I/O side effects - all data is passed in as parameters.
+ * This is the testable core extracted from generateReport's I/O shell.
+ */
+export function aggregateReport(
+  dateKey: string,
+  currentMetrics: PeriodMetrics,
+  prevMetrics: PeriodMetrics | null,
+  prevDateKey: string | null,
+  topOffenders: { member: string; score: number }[],
+  topMods: { username: string; count: number }[],
+  topRules: { rule: string; count: number }[],
+  topActionTypes: { action: string; count: number }[],
+  prevTopMods: { username: string; count: number }[],
+  prevTopRules: { rule: string; count: number }[],
+  lastReportTimestamp?: string,
+  generatedAt?: string,
+): ReportData {
+  const prevExists = prevMetrics !== null;
+  const trends: TrendData = {
+    posts: computeTrend(currentMetrics.posts, prevMetrics?.posts ?? null),
+    comments: computeTrend(currentMetrics.comments, prevMetrics?.comments ?? null),
+    removals: computeTrend(currentMetrics.removals, prevMetrics?.removals ?? null),
+    approvals: computeTrend(currentMetrics.approvals, prevMetrics?.approvals ?? null),
+  };
+
+  return {
+    generatedAt: generatedAt ?? new Date().toISOString(),
+    period: {
+      dateKey,
+      metrics: currentMetrics,
+      topRules,
+      topActionTypes,
+      topMods,
+      topOffenders,
+    },
+    previousPeriod: {
+      exists: prevExists,
+      dateKey: prevExists ? prevDateKey : null,
+      metrics: prevMetrics,
+      topRules: prevTopRules,
+      topMods: prevTopMods,
+    },
+    trends,
+    lastReportTimestamp,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -124,38 +173,23 @@ export async function generateReport(): Promise<ReportData> {
       ])
     : [[], []];
 
-  // Compute trends
-  const trends: TrendData = {
-    posts: computeTrend(currentMetrics.posts, prevMetrics?.posts ?? null),
-    comments: computeTrend(currentMetrics.comments, prevMetrics?.comments ?? null),
-    removals: computeTrend(currentMetrics.removals, prevMetrics?.removals ?? null),
-    approvals: computeTrend(currentMetrics.approvals, prevMetrics?.approvals ?? null),
-  };
-
   // Record this run
   await updateLastReportTimestamp();
   const lastReportTimestamp = await getLastReportTimestamp();
 
-  const report: ReportData = {
-    generatedAt: new Date().toISOString(),
-    period: {
-      dateKey,
-      metrics: currentMetrics,
-      topRules,
-      topActionTypes,
-      topMods,
-      topOffenders,
-    },
-    previousPeriod: {
-      exists: prevExists,
-      dateKey: prevExists ? prevDateKey : null,
-      metrics: prevMetrics,
-      topRules: prevTopRules,
-      topMods: prevTopMods,
-    },
-    trends,
+  // Delegate to pure function
+  return aggregateReport(
+    dateKey,
+    currentMetrics,
+    prevMetrics,
+    prevDateKey,
+    topOffenders,
+    topMods,
+    topRules,
+    topActionTypes,
+    prevTopMods,
+    prevTopRules,
     lastReportTimestamp,
-  };
-
-  return report;
+    new Date().toISOString(),
+  );
 }

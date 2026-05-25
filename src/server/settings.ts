@@ -37,7 +37,7 @@ export const DEFAULT_SETTINGS: ModVitalsSettings = {
  * Devvit boolean settings return actual booleans, but we guard against
  * string values just in case.
  */
-function asBoolean(value: unknown, defaultValue: boolean): boolean {
+export function asBoolean(value: unknown, defaultValue: boolean): boolean {
   if (typeof value === 'boolean') return value;
   if (value === 'true') return true;
   if (value === 'false') return false;
@@ -47,7 +47,7 @@ function asBoolean(value: unknown, defaultValue: boolean): boolean {
 /**
  * Parse a raw setting value as a number.
  */
-function asNumber(value: unknown, defaultValue: number): number {
+export function asNumber(value: unknown, defaultValue: number): number {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
     const n = parseInt(value, 10);
@@ -59,7 +59,7 @@ function asNumber(value: unknown, defaultValue: number): number {
 /**
  * Parse a raw setting value as one of the allowed frequency strings.
  */
-function asFrequency(value: unknown, defaultValue: 'daily' | 'weekly'): 'daily' | 'weekly' {
+export function asFrequency(value: unknown, defaultValue: 'daily' | 'weekly'): 'daily' | 'weekly' {
   if (value === 'daily' || value === 'weekly') return value;
   return defaultValue;
 }
