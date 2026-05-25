@@ -1,4 +1,4 @@
-import type { ReportData, TrendData } from './scheduler.js';
+import type { ReportData, TrendData } from './scheduler-logic.js';
 import type { ModVitalsSettings } from './settings.js';
 
 // ---------------------------------------------------------------------------

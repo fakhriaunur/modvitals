@@ -8,7 +8,7 @@
  * Or: node --experimental-strip-types src/server/report.test.ts
  */
 
-import type { ReportData } from './scheduler.js';
+import type { ReportData } from './scheduler-logic.js';
 import { formatReport, buildReportTitle } from './report.js';
 
 // ---------------------------------------------------------------------------
