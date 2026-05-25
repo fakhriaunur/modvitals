@@ -144,7 +144,7 @@ const reportWithPrev = aggregateReport(
   activeMetrics,
   prevMetrics,
   '20260523',
-  [{ member: 'offender1', score: 4 }],
+  [{ username: 'offender1', score: 4 }],
   [{ username: 'mod1', count: 10 }],
   [{ rule: 'No Spam', count: 5 }],
   [{ action: 'removelink', count: 6 }],

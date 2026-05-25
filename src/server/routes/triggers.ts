@@ -45,6 +45,22 @@ export async function handleCommentCreate(body: OnCommentCreateRequest): Promise
   await incrementCommentCount();
 }
 
+// ---------------------------------------------------------------------------
+// Action classification constants
+// ---------------------------------------------------------------------------
+
+const REMOVAL_ACTIONS = new Set([
+  'removelink',
+  'removecomment',
+  'spamlink',
+  'spamcomment',
+] as const);
+
+const APPROVAL_ACTIONS = new Set([
+  'approvelink',
+  'approvecomment',
+] as const);
+
 /**
  * Handle a mod-action trigger event.
  *
@@ -71,23 +87,15 @@ export async function handleModAction(body: OnModActionRequest): Promise<void> {
   // Track per-mod action count (all actions)
   await trackModAction(moderator, action);
 
-  // Action-specific tracking
-  if (
-    action === 'removelink' ||
-    action === 'removecomment' ||
-    action === 'spamlink' ||
-    action === 'spamcomment'
-  ) {
+  // Action-specific tracking using Sets
+  if (REMOVAL_ACTIONS.has(action as string)) {
     await incrementRemovalCount();
 
     // Track repeat offenders when content is removed
     if (targetUser) {
       await incrementOffenderScore(targetUser);
     }
-  } else if (
-    action === 'approvelink' ||
-    action === 'approvecomment'
-  ) {
+  } else if (APPROVAL_ACTIONS.has(action as string)) {
     await incrementApprovalCount();
   }
   // Other actions (banuser, warnuser, muteuser, etc.) are tracked

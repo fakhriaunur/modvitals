@@ -60,8 +60,8 @@ function makeActiveReport(): ReportData {
         { username: 'mod3', count: 2 },
       ],
       topOffenders: [
-        { member: 'offender1', score: 4 },
-        { member: 'offender2', score: 2 },
+        { username: 'offender1', score: 4 },
+        { username: 'offender2', score: 2 },
       ],
     },
     previousPeriod: {
@@ -95,7 +95,7 @@ function makeReportWithNegativeTrends(): ReportData {
         { username: 'mod1', count: 3 },
       ],
       topOffenders: [
-        { member: 'offender1', score: 2 },
+        { username: 'offender1', score: 2 },
       ],
     },
     previousPeriod: {

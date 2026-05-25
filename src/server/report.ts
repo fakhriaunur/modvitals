@@ -190,7 +190,7 @@ function formatRepeatOffenders(report: ReportData): string {
   lines.push(
     formatBulletList(
       topOffenders,
-      (o) => `**u/${o.member}** — ${o.score} incident${o.score !== 1 ? 's' : ''}`,
+      (o) => `**u/${o.username}** — ${o.score} incident${o.score !== 1 ? 's' : ''}`,
       'No repeat offenders.',
     ),
   );

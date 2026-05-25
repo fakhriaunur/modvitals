@@ -11,6 +11,12 @@ import {
 } from './metrics.js';
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+export const REPORT_TOP_N = 10;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -28,7 +34,7 @@ export interface PeriodData {
   topRules: { rule: string; count: number }[];
   topActionTypes: { action: string; count: number }[];
   topMods: { username: string; count: number }[];
-  topOffenders: { member: string; score: number }[];
+  topOffenders: { username: string; score: number }[];
 }
 
 export interface TrendData {
@@ -90,7 +96,7 @@ export function aggregateReport(
   currentMetrics: PeriodMetrics,
   prevMetrics: PeriodMetrics | null,
   prevDateKey: string | null,
-  topOffenders: { member: string; score: number }[],
+  topOffenders: { username: string; score: number }[],
   topMods: { username: string; count: number }[],
   topRules: { rule: string; count: number }[],
   topActionTypes: { action: string; count: number }[],
@@ -155,10 +161,10 @@ export async function generateReport(): Promise<ReportData> {
   const currentMetrics = parseMetrics(currentRaw);
 
   const [topOffenders, topMods, topRules, topActionTypes] = await Promise.all([
-    getTopOffenders(10),
-    getTopMods(dateKey, 10),
-    getTopRules(dateKey, 10),
-    getTopActionTypes(dateKey, 10),
+    getTopOffenders(REPORT_TOP_N),
+    getTopMods(dateKey, REPORT_TOP_N),
+    getTopRules(dateKey, REPORT_TOP_N),
+    getTopActionTypes(dateKey, REPORT_TOP_N),
   ]);
 
   // Previous period
@@ -168,8 +174,8 @@ export async function generateReport(): Promise<ReportData> {
 
   const [prevTopMods, prevTopRules] = prevExists
     ? await Promise.all([
-        getTopMods(prevDateKey, 10),
-        getTopRules(prevDateKey, 10),
+        getTopMods(prevDateKey, REPORT_TOP_N),
+        getTopRules(prevDateKey, REPORT_TOP_N),
       ])
     : [[], []];
 

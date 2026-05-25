@@ -1,33 +1,28 @@
 import { redis } from '@devvit/web/server';
+import { getTodayDateKey, getRelativeDateKey } from './date-utils.js';
+
+// ---------------------------------------------------------------------------
+// Redis key constants
+// ---------------------------------------------------------------------------
+
+const KEY = {
+  metrics: (dateKey: string) => `metrics:${dateKey}`,
+  mods: (dateKey: string) => `mods:${dateKey}`,
+  modActions: (dateKey: string) => `modActions:${dateKey}`,
+  rules: (dateKey: string) => `rules:${dateKey}`,
+  offenders: 'offenders',
+  lastReport: 'lastReport',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Date helpers (delegated to date-utils)
+// ---------------------------------------------------------------------------
 
 /**
  * Get today's date as YYYYMMDD string for use in Redis key naming.
- * Example: metrics:20260524
  */
 export function getDateKey(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}${m}${d}`;
-}
-
-/**
- * Get a date key for a date relative to the given date key.
- * Example: getRelativeDateKey('20260524', -1) returns '20260523'
- */
-function getRelativeDateKey(dateKey: string, offsetDays: number): string {
-  const year = parseInt(dateKey.substring(0, 4), 10);
-  const month = parseInt(dateKey.substring(4, 6), 10) - 1;
-  const day = parseInt(dateKey.substring(6, 8), 10);
-
-  const date = new Date(Date.UTC(year, month, day));
-  date.setUTCDate(date.getUTCDate() + offsetDays);
-
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(date.getUTCDate()).padStart(2, '0');
-  return `${y}${m}${d}`;
+  return getTodayDateKey();
 }
 
 /**
@@ -36,7 +31,7 @@ function getRelativeDateKey(dateKey: string, offsetDays: number): string {
  * Field: the metric name (e.g., 'posts', 'comments', 'removals')
  */
 async function incrementCounter(field: string, count: number = 1): Promise<void> {
-  const key = `metrics:${getDateKey()}`;
+  const key = KEY.metrics(getDateKey());
   await redis.hIncrBy(key, field, count);
 }
 
@@ -75,11 +70,11 @@ export async function incrementApprovalCount(): Promise<void> {
  * Value: incremented action count for that mod
  */
 export async function trackModAction(modUsername: string, actionType: string): Promise<void> {
-  const modKey = `mods:${getDateKey()}`;
+  const modKey = KEY.mods(getDateKey());
   await redis.hIncrBy(modKey, modUsername, 1);
 
   // Track per-mod action-type breakdown
-  const actionKey = `modActions:${getDateKey()}`;
+  const actionKey = KEY.modActions(getDateKey());
   await redis.hIncrBy(actionKey, `${modUsername}:${actionType}`, 1);
 }
 
@@ -91,7 +86,29 @@ export async function trackModAction(modUsername: string, actionType: string): P
  * Score: incremented by amount each call
  */
 export async function incrementOffenderScore(username: string, amount: number = 1): Promise<void> {
-  await redis.zIncrBy('offenders', username, amount);
+  await redis.zIncrBy(KEY.offenders, username, amount);
+}
+
+// ---------------------------------------------------------------------------
+// Generic sort-and-slice helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Sort entries from a Redis hash by count (descending) and return top N.
+ * Generic helper that replaces repeated sort-and-slice patterns.
+ */
+function topFromHash<T>(
+  hashData: Record<string, string>,
+  mapFn: (key: string, count: number) => T,
+  sortKeyFn: (item: T) => number,
+  limit: number = 10,
+): T[] {
+  const entries = Object.entries(hashData);
+  if (entries.length === 0) return [];
+  return entries
+    .map(([key, countStr]) => mapFn(key, parseInt(countStr, 10) || 0))
+    .sort((a, b) => sortKeyFn(b) - sortKeyFn(a))
+    .slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +123,7 @@ export async function incrementOffenderScore(username: string, amount: number = 
  */
 export async function getMetricsForDate(dateKey: string): Promise<Record<string, string>> {
   try {
-    return await redis.hGetAll(`metrics:${dateKey}`);
+    return await redis.hGetAll(KEY.metrics(dateKey));
   } catch (error) {
     console.error('[metrics] failed to getMetricsForDate', { dateKey, error });
     return {};
@@ -131,12 +148,13 @@ export function getPreviousDateKey(dateKey?: string): string {
 /**
  * Get top offenders from the global offenders sorted set.
  * Key: offenders (sorted set)
- * Returns array of { member, score } sorted highest score first.
+ * Returns array of { username, score } sorted highest score first.
  * Returns empty array if the key does not exist.
  */
-export async function getTopOffenders(limit: number = 10): Promise<{ member: string; score: number }[]> {
+export async function getTopOffenders(limit: number = 10): Promise<{ username: string; score: number }[]> {
   try {
-    return await redis.zRange('offenders', 0, limit - 1, { reverse: true, by: 'rank' });
+    const results = await redis.zRange(KEY.offenders, 0, limit - 1, { reverse: true, by: 'rank' });
+    return results.map((r) => ({ username: r.member, score: r.score }));
   } catch (error) {
     console.error('[metrics] failed to getTopOffenders', { limit, error });
     return [];
@@ -150,7 +168,7 @@ export async function getTopOffenders(limit: number = 10): Promise<{ member: str
  */
 export async function getModsForDate(dateKey: string): Promise<Record<string, string>> {
   try {
-    return await redis.hGetAll(`mods:${dateKey}`);
+    return await redis.hGetAll(KEY.mods(dateKey));
   } catch (error) {
     console.error('[metrics] failed to getModsForDate', { dateKey, error });
     return {};
@@ -164,13 +182,12 @@ export async function getModsForDate(dateKey: string): Promise<Record<string, st
  */
 export async function getTopMods(dateKey: string, limit: number = 10): Promise<{ username: string; count: number }[]> {
   const mods = await getModsForDate(dateKey);
-  const entries = Object.entries(mods);
-  if (entries.length === 0) return [];
-
-  return entries
-    .map(([username, countStr]) => ({ username, count: parseInt(countStr, 10) || 0 }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+  return topFromHash(
+    mods,
+    (username, count) => ({ username, count }),
+    (item) => item.count,
+    limit,
+  );
 }
 
 /**
@@ -180,7 +197,7 @@ export async function getTopMods(dateKey: string, limit: number = 10): Promise<{
  */
 export async function getRulesForDate(dateKey: string): Promise<Record<string, string>> {
   try {
-    return await redis.hGetAll(`rules:${dateKey}`);
+    return await redis.hGetAll(KEY.rules(dateKey));
   } catch (error) {
     console.error('[metrics] failed to getRulesForDate', { dateKey, error });
     return {};
@@ -194,13 +211,12 @@ export async function getRulesForDate(dateKey: string): Promise<Record<string, s
  */
 export async function getTopRules(dateKey: string, limit: number = 10): Promise<{ rule: string; count: number }[]> {
   const rules = await getRulesForDate(dateKey);
-  const entries = Object.entries(rules);
-  if (entries.length === 0) return [];
-
-  return entries
-    .map(([rule, countStr]) => ({ rule, count: parseInt(countStr, 10) || 0 }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+  return topFromHash(
+    rules,
+    (rule, count) => ({ rule, count }),
+    (item) => item.count,
+    limit,
+  );
 }
 
 /**
@@ -211,7 +227,7 @@ export async function getTopRules(dateKey: string, limit: number = 10): Promise<
  */
 export async function getTopActionTypes(dateKey: string, limit: number = 10): Promise<{ action: string; count: number }[]> {
   try {
-    const actions = await redis.hGetAll(`modActions:${dateKey}`);
+    const actions = await redis.hGetAll(KEY.modActions(dateKey));
     const entries = Object.entries(actions);
     if (entries.length === 0) return [];
 
@@ -241,7 +257,7 @@ export async function getTopActionTypes(dateKey: string, limit: number = 10): Pr
  */
 export async function getLastReportTimestamp(): Promise<string | undefined> {
   try {
-    return await redis.get('lastReport') ?? undefined;
+    return await redis.get(KEY.lastReport) ?? undefined;
   } catch (error) {
     console.error('[metrics] failed to getLastReportTimestamp', { error });
     return undefined;
@@ -264,5 +280,5 @@ export async function wasReportGeneratedToday(): Promise<boolean> {
  * Key: lastReport (string - ISO timestamp)
  */
 export async function updateLastReportTimestamp(): Promise<void> {
-  await redis.set('lastReport', new Date().toISOString());
+  await redis.set(KEY.lastReport, new Date().toISOString());
 }
