@@ -10,6 +10,7 @@
 
 import type { ReportData } from './scheduler-logic.js';
 import { formatReport, buildReportTitle } from './report.js';
+import type { ModVitalsSettings } from './settings.js';
 
 // ---------------------------------------------------------------------------
 // Mock data builders
@@ -25,6 +26,7 @@ function makeEmptyReport(): ReportData {
       topActionTypes: [],
       topMods: [],
       topOffenders: [],
+      offenderKarma: {},
     },
     previousPeriod: {
       exists: false,
@@ -63,6 +65,7 @@ function makeActiveReport(): ReportData {
         { username: 'offender1', score: 4 },
         { username: 'offender2', score: 2 },
       ],
+      offenderKarma: {},
     },
     previousPeriod: {
       exists: true,
@@ -97,6 +100,7 @@ function makeReportWithNegativeTrends(): ReportData {
       topOffenders: [
         { username: 'offender1', score: 2 },
       ],
+      offenderKarma: {},
     },
     previousPeriod: {
       exists: true,
@@ -112,6 +116,52 @@ function makeReportWithNegativeTrends(): ReportData {
       approvals: -80,
     },
     lastReportTimestamp: '2026-05-23T12:00:00.000Z',
+  };
+}
+
+/**
+ * Report with karma-enriched offender data.
+ */
+function makeReportWithKarma(): ReportData {
+  return {
+    generatedAt: '2026-05-24T12:00:00.000Z',
+    period: {
+      dateKey: '20260524',
+      metrics: { posts: 15, comments: 42, removals: 8, approvals: 5, reports: 3 },
+      topRules: [
+        { rule: 'No Spam', count: 5 },
+      ],
+      topActionTypes: [],
+      topMods: [],
+      topOffenders: [
+        { username: 'offender1', score: 4 },
+        { username: 'offender2', score: 2 },
+      ],
+      offenderKarma: {
+        offender1: {
+          linkKarma: 1200,
+          commentKarma: 800,
+          accountCreatedAt: new Date('2023-02-15T00:00:00.000Z'),
+          snoovatarUrl: 'https://example.com/snoovatar1.png',
+          subredditKarma: { fromComments: -10, fromPosts: -5 },
+        },
+        offender2: {
+          linkKarma: 50,
+          commentKarma: 200,
+          accountCreatedAt: new Date('2026-01-01T00:00:00.000Z'),
+          // no snoovatar, no subreddit karma
+        },
+      },
+    },
+    previousPeriod: {
+      exists: false,
+      dateKey: null,
+      metrics: null,
+      topRules: [],
+      topMods: [],
+    },
+    trends: { posts: null, comments: null, removals: null, approvals: null },
+    lastReportTimestamp: undefined,
   };
 }
 
@@ -252,6 +302,47 @@ const expectedSections = [
 for (const section of expectedSections) {
   assertContains(body, section, `Section header present: ${section}`);
 }
+
+// ---------------------------------------------------------------------------
+// Test: Karma enrichment in Repeat Offenders section
+// ---------------------------------------------------------------------------
+console.log('\n--- Karma Enrichment ---');
+
+const karmaReport = makeReportWithKarma();
+const karmaBody = formatReport(karmaReport);
+
+// Karma stats should appear when data is present
+assertContains(karmaBody, '**u/offender1**', 'Offender1 username present');
+assertContains(karmaBody, '**u/offender2**', 'Offender2 username present');
+assertContains(karmaBody, 'account', 'Account age indicator present');
+assertContains(karmaBody, 'karma', 'Karma label present');
+assertContains(karmaBody, 'sub karma', 'Subreddit karma label present');
+assertContains(karmaBody, '2.0k karma', 'Total karma formatted (1200+800=2000 → 2.0k)');
+assertContains(karmaBody, '-15 sub karma', 'Negative subreddit karma shown');
+assertContains(karmaBody, '250 karma', 'Offender2 total karma (50+200=250)');
+assertContains(karmaBody, 'snoovatar', 'Snoovatar URL rendered');
+assertContains(karmaBody, '4 incidents', 'Offender1 incident count');
+assertContains(karmaBody, '2 incidents', 'Offender2 incident count');
+
+// Karma stats hidden when settings explicitly disable
+const settingsHideKarma: ModVitalsSettings = {
+  reportFrequency: 'daily',
+  reportHour: 12,
+  showPosts: true,
+  showComments: true,
+  showRemovals: true,
+  showApprovals: true,
+  showRuleViolations: true,
+  showTopOffenders: true,
+  showModActivity: true,
+  showKarmaStats: false,
+};
+const karmaBodyHidden = formatReport(karmaReport, settingsHideKarma);
+assertNotContains(karmaBodyHidden, 'account', 'Account age hidden when showKarmaStats=false');
+assertNotContains(karmaBodyHidden, 'karma', 'Karma label hidden when showKarmaStats=false');
+// Username and incident count still shown
+assertContains(karmaBodyHidden, '**u/offender1**', 'Username still shown when karma hidden');
+assertContains(karmaBodyHidden, '4 incidents', 'Incident count still shown when karma hidden');
 
 // ---------------------------------------------------------------------------
 // Summary

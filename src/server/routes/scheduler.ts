@@ -5,6 +5,7 @@ import { formatReport, buildReportTitle } from '../report.js';
 import { postReportToSubreddit } from '../posting.js';
 import { getSettings, shouldGenerateReport } from '../settings.js';
 import { wasReportGeneratedToday } from '../metrics.js';
+import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
 
 // ---------------------------------------------------------------------------
 // Route registration
@@ -67,6 +68,25 @@ export default function registerScheduler(app: Hono): void {
         topMods: report.period.topMods.length,
         previousPeriodExists: report.previousPeriod.exists,
       });
+
+      // Enrich repeat offenders with karma data if enabled
+      if (modSettings.showKarmaStats && report.period.topOffenders.length > 0) {
+        const usernames = report.period.topOffenders.map((o) => o.username);
+        const karmaMap = await fetchUsersKarma(usernames);
+
+        // Attach karma data to the report
+        for (const [username, info] of karmaMap) {
+          report.period.offenderKarma[username] = info;
+        }
+
+        // Store karma snapshots in Redis for period-over-period delta comparison
+        await storeOffenderKarmaSnapshots(report.period.dateKey, karmaMap);
+
+        console.log('[scheduler:generate-report] karma enrichment complete', {
+          usersFetched: usernames.length,
+          successful: [...karmaMap.values()].filter((v) => v !== null).length,
+        });
+      }
 
       // Format the report into a Markdown post, respecting metric visibility settings
       const title = buildReportTitle(report);

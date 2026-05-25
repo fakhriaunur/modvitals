@@ -1,6 +1,12 @@
 import type { ReportData, TrendData } from './scheduler-logic.js';
 import type { ModVitalsSettings } from './settings.js';
 import { formatDate } from './date-utils.js';
+import {
+  formatAccountAge,
+  formatTotalKarma,
+  formatSubredditKarma,
+} from './karma.js';
+import type { KarmaInfo } from './karma.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -175,10 +181,56 @@ function formatRuleViolations(report: ReportData): string {
 }
 
 /**
+ * Format a single offender entry with optional karma stats.
+ */
+function formatOffenderLine(
+  username: string,
+  score: number,
+  karma?: KarmaInfo | null,
+): string {
+  let parts: string[] = [];
+
+  // Snoovatar image if available
+  if (karma?.snoovatarUrl) {
+    parts.push(`![snoovatar](${karma.snoovatarUrl})`);
+  }
+
+  // Username
+  parts.push(`**u/${username}**`);
+
+  // Karma stats in parentheses
+  if (karma) {
+    const stats: string[] = [];
+
+    // Account age
+    stats.push(formatAccountAge(karma.accountCreatedAt));
+
+    // Total karma (link + comment)
+    const totalKarma = formatTotalKarma(karma.linkKarma, karma.commentKarma);
+    stats.push(`${totalKarma} karma`);
+
+    // Subreddit-specific karma
+    const subKarma = formatSubredditKarma(karma.subredditKarma);
+    if (subKarma) {
+      stats.push(subKarma);
+    }
+
+    if (stats.length > 0) {
+      parts.push(`(${stats.join(', ')})`);
+    }
+  }
+
+  // Incident count
+  parts.push(`— ${score} incident${score !== 1 ? 's' : ''}`);
+
+  return parts.join(' ');
+}
+
+/**
  * Format the Repeat Offenders section.
  */
-function formatRepeatOffenders(report: ReportData): string {
-  const { topOffenders } = report.period;
+function formatRepeatOffenders(report: ReportData, settings?: ModVitalsSettings): string {
+  const { topOffenders, offenderKarma } = report.period;
 
   const lines: string[] = ['### Repeat Offenders\n'];
 
@@ -187,10 +239,18 @@ function formatRepeatOffenders(report: ReportData): string {
     return lines.join('\n');
   }
 
+  const showKarma = !settings || settings.showKarmaStats;
+
   lines.push(
     formatBulletList(
       topOffenders,
-      (o) => `**u/${o.username}** — ${o.score} incident${o.score !== 1 ? 's' : ''}`,
+      (o) => {
+        if (showKarma) {
+          const karma = offenderKarma?.[o.username];
+          return formatOffenderLine(o.username, o.score, karma);
+        }
+        return `**u/${o.username}** — ${o.score} incident${o.score !== 1 ? 's' : ''}`;
+      },
       'No repeat offenders.',
     ),
   );
@@ -287,7 +347,7 @@ export function formatReport(report: ReportData, settings?: ModVitalsSettings): 
   }
 
   if (!settings || settings.showTopOffenders) {
-    enabledSections.push(formatRepeatOffenders(report));
+    enabledSections.push(formatRepeatOffenders(report, settings));
   }
 
   if (!settings || settings.showModActivity) {

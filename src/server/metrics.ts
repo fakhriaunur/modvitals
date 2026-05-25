@@ -12,6 +12,7 @@ const KEY = {
   rules: (dateKey: string) => `rules:${dateKey}`,
   offenders: 'offenders',
   lastReport: 'lastReport',
+  karma: (dateKey: string) => `karma:${dateKey}`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -281,4 +282,51 @@ export async function wasReportGeneratedToday(): Promise<boolean> {
  */
 export async function updateLastReportTimestamp(): Promise<void> {
   await redis.set(KEY.lastReport, new Date().toISOString());
+}
+
+// ---------------------------------------------------------------------------
+// Karma snapshot helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Store a karma snapshot for a user in the karma:{dateKey} hash.
+ * Value stored as "linkKarma|commentKarma" pipe-delimited string.
+ */
+export async function storeKarmaSnapshot(
+  dateKey: string,
+  username: string,
+  linkKarma: number,
+  commentKarma: number,
+): Promise<void> {
+  try {
+    await redis.hSet(KEY.karma(dateKey), username, `${linkKarma}|${commentKarma}`);
+  } catch (error) {
+    console.error('[metrics] failed to storeKarmaSnapshot', { dateKey, username, error });
+  }
+}
+
+/**
+ * Get all karma snapshots for a specific date.
+ * Key: karma:{dateKey} (hash: username → "linkKarma|commentKarma")
+ * Returns a Record of username → { linkKarma, commentKarma }.
+ * Returns empty Record if the key does not exist.
+ */
+export async function getKarmaSnapshotsForDate(
+  dateKey: string,
+): Promise<Record<string, { linkKarma: number; commentKarma: number }>> {
+  try {
+    const raw = await redis.hGetAll(KEY.karma(dateKey));
+    const result: Record<string, { linkKarma: number; commentKarma: number }> = {};
+    for (const [username, value] of Object.entries(raw)) {
+      const parts = value.split('|');
+      result[username] = {
+        linkKarma: parseInt(parts[0] ?? '0', 10) || 0,
+        commentKarma: parseInt(parts[1] ?? '0', 10) || 0,
+      };
+    }
+    return result;
+  } catch (error) {
+    console.error('[metrics] failed to getKarmaSnapshotsForDate', { dateKey, error });
+    return {};
+  }
 }

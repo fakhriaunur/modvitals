@@ -14,6 +14,7 @@ export interface ModVitalsSettings {
   showRuleViolations: boolean;
   showTopOffenders: boolean;
   showModActivity: boolean;
+  showKarmaStats: boolean;
 }
 
 export const DEFAULT_SETTINGS: ModVitalsSettings = {
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: ModVitalsSettings = {
   showRuleViolations: true,
   showTopOffenders: true,
   showModActivity: true,
+  showKarmaStats: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -87,6 +89,7 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showRuleViolations,
       showTopOffenders,
       showModActivity,
+      showKarmaStats,
     ] = await Promise.all([
       settings.get('reportFrequency'),
       settings.get('reportHour'),
@@ -97,6 +100,7 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       settings.get('showRuleViolations'),
       settings.get('showTopOffenders'),
       settings.get('showModActivity'),
+      settings.get('showKarmaStats'),
     ]);
 
     return {
@@ -109,6 +113,7 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showRuleViolations: asBoolean(showRuleViolations, DEFAULT_SETTINGS.showRuleViolations),
       showTopOffenders: asBoolean(showTopOffenders, DEFAULT_SETTINGS.showTopOffenders),
       showModActivity: asBoolean(showModActivity, DEFAULT_SETTINGS.showModActivity),
+      showKarmaStats: asBoolean(showKarmaStats, DEFAULT_SETTINGS.showKarmaStats),
     };
   } catch (err) {
     console.warn('[settings] failed to load settings, using defaults', err);

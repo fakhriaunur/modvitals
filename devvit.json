@@ -102,6 +102,12 @@
         "label": "Show Mod Activity",
         "helpText": "Include the moderator activity section in the report.",
         "defaultValue": true
+      },
+      "showKarmaStats": {
+        "type": "boolean",
+        "label": "Show Karma Stats",
+        "helpText": "Include karma statistics (account age, link/comment karma) for repeat offenders.",
+        "defaultValue": true
       }
     }
   },

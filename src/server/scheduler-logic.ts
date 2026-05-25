@@ -9,6 +9,7 @@ import {
   updateLastReportTimestamp,
   getLastReportTimestamp,
 } from './metrics.js';
+import type { KarmaInfo } from './karma.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -35,6 +36,8 @@ export interface PeriodData {
   topActionTypes: { action: string; count: number }[];
   topMods: { username: string; count: number }[];
   topOffenders: { username: string; score: number }[];
+  /** Per-offender karma data fetched via Reddit API. Maps username → KarmaInfo (or null if not found). */
+  offenderKarma: Record<string, KarmaInfo | null>;
 }
 
 export interface TrendData {
@@ -104,6 +107,7 @@ export function aggregateReport(
   prevTopRules: { rule: string; count: number }[],
   lastReportTimestamp?: string,
   generatedAt?: string,
+  offenderKarma?: Record<string, KarmaInfo | null>,
 ): ReportData {
   const prevExists = prevMetrics !== null;
   const trends: TrendData = {
@@ -122,6 +126,7 @@ export function aggregateReport(
       topActionTypes,
       topMods,
       topOffenders,
+      offenderKarma: offenderKarma ?? {},
     },
     previousPeriod: {
       exists: prevExists,
@@ -197,5 +202,7 @@ export async function generateReport(): Promise<ReportData> {
     prevTopRules,
     lastReportTimestamp,
     new Date().toISOString(),
+    // karma data is injected live by the scheduler route
+    undefined,
   );
 }
