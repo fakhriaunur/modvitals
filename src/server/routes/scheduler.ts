@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import type { TaskRequest, TaskResponse } from '@devvit/web/server';
-import { reddit } from '@devvit/web/server';
 import { generateReport } from '../scheduler-logic.js';
 import { formatReport, buildReportTitle } from '../report.js';
+import { postReportToSubreddit } from '../posting.js';
 import { getSettings, shouldGenerateReport } from '../settings.js';
 import { wasReportGeneratedToday } from '../metrics.js';
 
@@ -77,32 +77,12 @@ export default function registerScheduler(app: Hono): void {
         bodyLength: bodyText.length,
       });
 
-      // Submit the report as a self-post to the current subreddit
-      // Use the reddit client singleton to post with mod scope
-      const post = await reddit.submitPost({
-        title,
-        text: bodyText,
-      });
-
-      console.log('[scheduler:generate-report] post submitted', {
-        postId: post.id,
-        postTitle: post.title,
-      });
-
-      // Make the post mod-only visibility:
-      // 1. Distinguish as a moderator post (green [M] shield, visible in mod discussions)
-      // 2. Approve the post (marks as reviewed by mod team)
-      try {
-        await post.distinguish();
-        await post.approve();
-        console.log('[scheduler:generate-report] post marked as distinguished mod post');
-      } catch (modErr) {
-        // Non-blocking: post was submitted even if mod-only flags fail
-        console.warn('[scheduler:generate-report] could not set mod-only flags', modErr);
-      }
+      // Submit the report as a mod-only self-post to the current subreddit
+      const { postId, url } = await postReportToSubreddit(title, bodyText);
 
       console.log('[scheduler:generate-report] completed successfully', {
-        postId: post.id,
+        postId,
+        url,
       });
 
       return c.json<TaskResponse>({ status: 'ok' }, 200);
