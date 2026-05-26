@@ -29,13 +29,10 @@ app.post('/internal/settings/validate-hour', async (c) => {
   console.log('[settings:validate-hour] validating', { hour });
 
   if (typeof hour !== 'number' || !Number.isInteger(hour) || hour < 0 || hour > 23) {
-    return c.json(
-      { error: 'Report hour must be an integer between 0 and 23.' },
-      400,
-    );
+    return c.json({ success: false, error: 'Report hour must be an integer between 0 and 23.' }, 200);
   }
 
-  return c.json({ status: 'ok' }, 200);
+  return c.json({ success: true });
 });
 
 /**
@@ -50,13 +47,10 @@ app.post('/internal/settings/validate-threshold', async (c) => {
   console.log('[settings:validate-threshold] validating', { threshold });
 
   if (typeof threshold !== 'number' || !Number.isInteger(threshold) || threshold < 1 || threshold > 365) {
-    return c.json(
-      { error: 'Threshold must be an integer between 1 and 365.' },
-      400,
-    );
+    return c.json({ success: false, error: 'Threshold must be an integer between 1 and 365.' }, 200);
   }
 
-  return c.json({ status: 'ok' }, 200);
+  return c.json({ success: true });
 });
 
 /**
@@ -71,13 +65,10 @@ app.post('/internal/settings/validate-minute', async (c) => {
   console.log('[settings:validate-minute] validating', { minute });
 
   if (typeof minute !== 'number' || !Number.isInteger(minute) || minute < 0 || minute > 59) {
-    return c.json(
-      { error: 'Report minute must be an integer between 0 and 59.' },
-      400,
-    );
+    return c.json({ success: false, error: 'Report minute must be an integer between 0 and 59.' }, 200);
   }
 
-  return c.json({ status: 'ok' }, 200);
+  return c.json({ success: true });
 });
 
 /**
@@ -93,10 +84,10 @@ app.post('/internal/settings/validate-cron', async (c) => {
 
   const error = validateCron(cron ?? '');
   if (error) {
-    return c.json({ error }, 400);
+    return c.json({ success: false, error }, 200);
   }
 
-  return c.json({ status: 'ok' }, 200);
+  return c.json({ success: true });
 });
 
 // Register route modules
