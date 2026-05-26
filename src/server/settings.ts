@@ -1,12 +1,22 @@
 import { settings } from '@devvit/web/server';
+import { matchCron } from './cron-matcher.js';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+export type ReportFrequency = 'hourly' | '4-hourly' | '12-hourly' | 'daily' | 'weekly' | 'custom';
+
 export interface ModVitalsSettings {
-  reportFrequency: 'daily' | 'weekly';
+  reportFrequency: ReportFrequency;
+  /** Hour of day (0-23) used for daily/weekly presets */
   reportHour: number;
+  /** Minute of hour (0-59) used for hourly/4-hourly/12-hourly presets */
+  reportMinute: number;
+  /** Custom cron expression (5-field) used when frequency='custom' */
+  customCron: string;
+  /** Timezone offset in minutes from UTC (e.g. -300 for UTC-5, 480 for UTC+8) */
+  timezoneOffset: number;
   showPosts: boolean;
   showComments: boolean;
   showRemovals: boolean;
@@ -24,6 +34,9 @@ export interface ModVitalsSettings {
 export const DEFAULT_SETTINGS: ModVitalsSettings = {
   reportFrequency: 'daily',
   reportHour: 12,
+  reportMinute: 0,
+  customCron: '0 12 * * *',
+  timezoneOffset: 0,
   showPosts: true,
   showComments: true,
   showRemovals: true,
@@ -69,8 +82,35 @@ export function asNumber(value: unknown, defaultValue: number): number {
 /**
  * Parse a raw setting value as one of the allowed frequency strings.
  */
-export function asFrequency(value: unknown, defaultValue: 'daily' | 'weekly'): 'daily' | 'weekly' {
-  if (value === 'daily' || value === 'weekly') return value;
+export function asFrequency(value: unknown, defaultValue: ReportFrequency): ReportFrequency {
+  const valid: ReportFrequency[] = ['hourly', '4-hourly', '12-hourly', 'daily', 'weekly', 'custom'];
+  if (typeof value === 'string' && (valid as string[]).includes(value)) return value as ReportFrequency;
+  return defaultValue;
+}
+
+/**
+ * Parse a raw setting value as a timezone offset in minutes.
+ * Accepts a number (offset in minutes) or a string like "-300" or "UTC-5".
+ * Falls back to defaultValue (0 = UTC).
+ */
+export function asTimezoneOffset(value: unknown, defaultValue: number): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= -720 && value <= 840) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    // Try parsing as raw number string
+    const n = parseInt(value, 10);
+    if (!isNaN(n) && n >= -720 && n <= 840) return n;
+    // Try parsing "UTC+5", "UTC-5", "UTC+05:30" style
+    const match = value.match(/^UTC([+-])(\d{1,2})(?::?(\d{2}))?$/i);
+    if (match) {
+      const sign = match[1] === '+' ? 1 : -1;
+      const hours = parseInt(match[2], 10);
+      const minutes = match[3] ? parseInt(match[3], 10) : 0;
+      const offset = sign * (hours * 60 + minutes);
+      if (offset >= -720 && offset <= 840) return offset;
+    }
+  }
   return defaultValue;
 }
 
@@ -90,6 +130,9 @@ export async function getSettings(): Promise<ModVitalsSettings> {
     const [
       reportFrequency,
       reportHour,
+      reportMinute,
+      customCron,
+      timezoneOffset,
       showPosts,
       showComments,
       showRemovals,
@@ -105,6 +148,9 @@ export async function getSettings(): Promise<ModVitalsSettings> {
     ] = await Promise.all([
       settings.get('reportFrequency'),
       settings.get('reportHour'),
+      settings.get('reportMinute'),
+      settings.get('customCron'),
+      settings.get('timezoneOffset'),
       settings.get('showPosts'),
       settings.get('showComments'),
       settings.get('showRemovals'),
@@ -122,6 +168,9 @@ export async function getSettings(): Promise<ModVitalsSettings> {
     return {
       reportFrequency: asFrequency(reportFrequency, DEFAULT_SETTINGS.reportFrequency),
       reportHour: asNumber(reportHour, DEFAULT_SETTINGS.reportHour),
+      reportMinute: asNumber(reportMinute, DEFAULT_SETTINGS.reportMinute),
+      customCron: typeof customCron === 'string' ? customCron : DEFAULT_SETTINGS.customCron,
+      timezoneOffset: asTimezoneOffset(timezoneOffset, DEFAULT_SETTINGS.timezoneOffset),
       showPosts: asBoolean(showPosts, DEFAULT_SETTINGS.showPosts),
       showComments: asBoolean(showComments, DEFAULT_SETTINGS.showComments),
       showRemovals: asBoolean(showRemovals, DEFAULT_SETTINGS.showRemovals),
@@ -142,27 +191,67 @@ export async function getSettings(): Promise<ModVitalsSettings> {
 }
 
 /**
+ * Apply a timezone offset (in minutes) to a Date and return hour/minute/day
+ * pre-adjusted to that timezone.
+ *
+ * Pure function — no side effects.
+ */
+function adjustDate(date: Date, offsetMinutes: number): Date {
+  return new Date(date.getTime() + offsetMinutes * 60 * 1000);
+}
+
+/**
  * Determine if a report should be generated based on the configured frequency,
- * report hour, and the current time.
+ * report time, and the current time.
  *
  * The cron runs every minute (heartbeat). This function checks whether the
  * configured conditions are met:
  *
- * - Daily: only generate when current UTC hour matches reportHour.
- * - Weekly: only generate on Mondays when current UTC hour matches reportHour.
+ * - hourly:   fires when current minute matches reportMinute (every hour)
+ * - 4-hourly: fires at hours 0,4,8,12,16,20 at reportMinute
+ * - 12-hourly: fires at hours 0,12 at reportMinute
+ * - daily:    fires when current UTC hour matches reportHour (existing behavior)
+ * - weekly:   fires on Mondays when current UTC hour matches reportHour
+ * - custom:   evaluates the customCron 5-field expression
+ *
+ * If timezoneOffset is non-zero, the local timezone-adjusted time is used
+ * for all comparisons.
  */
 export function shouldGenerateReport(
-  frequency: 'daily' | 'weekly',
+  frequency: ReportFrequency,
   reportHour: number = 12,
+  reportMinute: number = 0,
+  customCron?: string,
+  timezoneOffset: number = 0,
 ): boolean {
   const now = new Date();
-  const currentHour = now.getUTCHours();
+  const ref = timezoneOffset !== 0 ? adjustDate(now, timezoneOffset) : now;
 
-  // Hour guard – only run during the configured report hour
-  if (currentHour !== reportHour) return false;
+  const currentHour = ref.getUTCHours();
+  const currentMinute = ref.getUTCMinutes();
+  const currentDay = ref.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
-  // Frequency guard
-  if (frequency === 'daily') return true;
-  // weekly: only on Mondays
-  return now.getUTCDay() === 1;
+  switch (frequency) {
+    case 'hourly':
+      return currentMinute === reportMinute;
+
+    case '4-hourly':
+      return currentHour % 4 === 0 && currentMinute === reportMinute;
+
+    case '12-hourly':
+      return (currentHour === 0 || currentHour === 12) && currentMinute === reportMinute;
+
+    case 'daily':
+      return currentHour === reportHour && currentMinute === reportMinute;
+
+    case 'weekly':
+      return currentDay === 1 && currentHour === reportHour && currentMinute === reportMinute;
+
+    case 'custom':
+      if (!customCron) return false;
+      return matchCron(customCron, ref);
+
+    default:
+      return false;
+  }
 }

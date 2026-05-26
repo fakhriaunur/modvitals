@@ -334,6 +334,9 @@ assertContains(karmaBody, '2 incidents', 'Offender2 incident count');
 const settingsHideKarma: ModVitalsSettings = {
   reportFrequency: 'daily',
   reportHour: 12,
+  reportMinute: 0,
+  customCron: '',
+  timezoneOffset: 0,
   showPosts: true,
   showComments: true,
   showRemovals: true,
@@ -397,6 +400,9 @@ assertContains(lbBody, 'Inactive 10 days', 'Leaderboard: inactive days for mod4'
 const settingsNoLeaderboard: ModVitalsSettings = {
   reportFrequency: 'daily',
   reportHour: 12,
+  reportMinute: 0,
+  customCron: '',
+  timezoneOffset: 0,
   showPosts: true,
   showComments: true,
   showRemovals: true,
@@ -418,6 +424,9 @@ assertContains(lbBodyDisabled, 'Top Moderators', 'Leaderboard disabled: simple m
 const settingsNoInactive: ModVitalsSettings = {
   reportFrequency: 'daily',
   reportHour: 12,
+  reportMinute: 0,
+  customCron: '',
+  timezoneOffset: 0,
   showPosts: true,
   showComments: true,
   showRemovals: true,
@@ -537,6 +546,9 @@ assertContains(fiveDayBody, '5 days collected', 'Shows 5 days collected');
 const settingsAnomalyDisabled: ModVitalsSettings = {
   reportFrequency: 'daily',
   reportHour: 12,
+  reportMinute: 0,
+  customCron: '',
+  timezoneOffset: 0,
   showPosts: true,
   showComments: true,
   showRemovals: true,

@@ -4,7 +4,7 @@ import { generateReport, detectAnomalies, parseMetrics } from '../scheduler-logi
 import { formatReport, buildReportTitle } from '../report.js';
 import { postReportToSubreddit } from '../posting.js';
 import { getSettings, shouldGenerateReport } from '../settings.js';
-import { wasReportGeneratedToday, storeDailySnapshot, getMultipleSnapshots } from '../metrics.js';
+import { wasReportGeneratedToday, getLastReportTimestamp, storeDailySnapshot, getMultipleSnapshots } from '../metrics.js';
 import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
 import { getRelativeDateKey } from '../date-utils.js';
 
@@ -42,19 +42,44 @@ export default function registerScheduler(app: Hono): void {
       console.log('[scheduler:generate-report] settings loaded', {
         reportFrequency: modSettings.reportFrequency,
         reportHour: modSettings.reportHour,
+        reportMinute: modSettings.reportMinute,
+        timezoneOffset: modSettings.timezoneOffset,
+        hasCustomCron: !!modSettings.customCron,
       });
 
-      // Check if a report should be generated based on frequency + hour settings
-      if (!shouldGenerateReport(modSettings.reportFrequency, modSettings.reportHour)) {
-        console.log('[scheduler:generate-report] skipping — settings (frequency/hour) not met');
+      // Check if a report should be generated based on frequency + time settings
+      const shouldRun = shouldGenerateReport(
+        modSettings.reportFrequency,
+        modSettings.reportHour,
+        modSettings.reportMinute,
+        modSettings.customCron,
+        modSettings.timezoneOffset,
+      );
+      if (!shouldRun) {
+        console.log('[scheduler:generate-report] skipping — settings (frequency/time) not met');
         return c.json<TaskResponse>({ status: 'ok' }, 200);
       }
 
-      // Dedup: don't generate multiple reports per day
-      const alreadyGenerated = await wasReportGeneratedToday();
-      if (alreadyGenerated) {
-        console.log('[scheduler:generate-report] skipping — report already generated today');
-        return c.json<TaskResponse>({ status: 'ok' }, 200);
+      // Dedup: skip "already generated today" check for sub-hourly presets
+      // (hourly, 4-hourly, 12-hourly, custom can all fire multiple times per day).
+      // For daily/weekly, apply the dedup to prevent double-fires within the same window.
+      const isSubHourly = ['hourly', '4-hourly', '12-hourly', 'custom'].includes(modSettings.reportFrequency);
+      if (!isSubHourly) {
+        const alreadyGenerated = await wasReportGeneratedToday();
+        if (alreadyGenerated) {
+          console.log('[scheduler:generate-report] skipping — report already generated today');
+          return c.json<TaskResponse>({ status: 'ok' }, 200);
+        }
+      } else {
+        // For sub-hourly presets, dedup only if last report was within last 60s
+        const lastReport = await getLastReportTimestamp();
+        if (lastReport) {
+          const elapsed = Date.now() - new Date(lastReport).getTime();
+          if (elapsed < 60_000) {
+            console.log('[scheduler:generate-report] skipping — last report <60s ago');
+            return c.json<TaskResponse>({ status: 'ok' }, 200);
+          }
+        }
       }
 
       const report = await generateReport(

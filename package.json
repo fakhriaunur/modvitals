@@ -10,7 +10,7 @@
     "dev": "devvit playtest",
     "launch": "npm run deploy && devvit publish",
     "login": "devvit login",
-    "test": "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts",
+    "test": "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts && npx tsx src/server/cron-matcher.test.ts",
     "type-check": "tsc --build"
   },
   "engines": {
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.19",
+    "tsx": "^4.22.3",
     "typescript": "6.0.3",
     "vite": "8.0.13"
   }

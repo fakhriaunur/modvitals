@@ -41,25 +41,98 @@
       "reportFrequency": {
         "type": "select",
         "label": "Report Frequency",
-        "helpText": "How often should the health report be generated?",
+        "helpText": "How often should the health report be generated? Hourly/4-hourly/12-hourly fire at the configured Report Minute. Daily/Weekly fire at the configured Report Hour. Custom uses a cron expression.",
         "options": [
+          {
+            "label": "Hourly",
+            "value": "hourly"
+          },
+          {
+            "label": "Every 4 Hours",
+            "value": "4-hourly"
+          },
+          {
+            "label": "Every 12 Hours",
+            "value": "12-hourly"
+          },
           {
             "label": "Daily",
             "value": "daily"
           },
           {
-            "label": "Weekly",
+            "label": "Weekly (Monday)",
             "value": "weekly"
+          },
+          {
+            "label": "Custom (cron expression)",
+            "value": "custom"
           }
         ],
         "defaultValue": "daily"
       },
       "reportHour": {
         "type": "number",
-        "label": "Report Time (UTC)",
-        "helpText": "Hour of day (0-23 UTC) when the report should be generated. Default is 12 (noon UTC).",
+        "label": "Report Hour (UTC)",
+        "helpText": "Hour of day (0-23 UTC) when daily/weekly reports fire. Default 12 (noon UTC).",
         "defaultValue": 12,
         "validationEndpoint": "/internal/settings/validate-hour"
+      },
+      "reportMinute": {
+        "type": "number",
+        "label": "Report Minute",
+        "helpText": "Minute of hour (0-59) when hourly/4-hourly/12-hourly reports fire. Default 0 (top of the hour). For daily/weekly, minute 0 is used by default.",
+        "defaultValue": 0,
+        "validationEndpoint": "/internal/settings/validate-minute"
+      },
+      "customCron": {
+        "type": "string",
+        "label": "Custom Cron Expression",
+        "helpText": "5-field cron expression (minute hour day-of-month month day-of-week). Examples: '0 */2 * * *' = every 2 hours, '30 9 * * 1-5' = weekdays at 9:30. Only minute and hour fields are used for report timing. Tips: 0 * * * * = hourly, 0 12 * * * = daily noon, 0 12 * * 1 = weekly Monday noon. See crontab.guru for help.",
+        "defaultValue": "0 12 * * *",
+        "validationEndpoint": "/internal/settings/validate-cron"
+      },
+      "timezoneOffset": {
+        "type": "select",
+        "label": "Timezone",
+        "helpText": "Select your timezone offset from UTC. Auto-detect: check your current UTC offset at https://time.is/UTC.",
+        "options": [
+          { "label": "UTC-12 (Baker Island)", "value": "-720" },
+          { "label": "UTC-11 (American Samoa)", "value": "-660" },
+          { "label": "UTC-10 (Hawaii)", "value": "-600" },
+          { "label": "UTC-9 (Alaska)", "value": "-540" },
+          { "label": "UTC-8 (Pacific Time)", "value": "-480" },
+          { "label": "UTC-7 (Mountain Time)", "value": "-420" },
+          { "label": "UTC-6 (Central Time)", "value": "-360" },
+          { "label": "UTC-5 (Eastern Time)", "value": "-300" },
+          { "label": "UTC-4 (Atlantic Time)", "value": "-240" },
+          { "label": "UTC-3 (Brasilia)", "value": "-180" },
+          { "label": "UTC-2 (Mid-Atlantic)", "value": "-120" },
+          { "label": "UTC-1 (Azores)", "value": "-60" },
+          { "label": "UTC±0 (UTC / London)", "value": "0" },
+          { "label": "UTC+1 (Berlin / Paris)", "value": "60" },
+          { "label": "UTC+2 (Athens / Cairo)", "value": "120" },
+          { "label": "UTC+3 (Moscow)", "value": "180" },
+          { "label": "UTC+3:30 (Tehran)", "value": "210" },
+          { "label": "UTC+4 (Dubai)", "value": "240" },
+          { "label": "UTC+4:30 (Kabul)", "value": "270" },
+          { "label": "UTC+5 (Karachi)", "value": "300" },
+          { "label": "UTC+5:30 (India)", "value": "330" },
+          { "label": "UTC+5:45 (Kathmandu)", "value": "345" },
+          { "label": "UTC+6 (Dhaka)", "value": "360" },
+          { "label": "UTC+6:30 (Yangon)", "value": "390" },
+          { "label": "UTC+7 (Bangkok)", "value": "420" },
+          { "label": "UTC+8 (Beijing / Singapore)", "value": "480" },
+          { "label": "UTC+8:45 (Eucla)", "value": "525" },
+          { "label": "UTC+9 (Tokyo / Seoul)", "value": "540" },
+          { "label": "UTC+9:30 (Adelaide)", "value": "570" },
+          { "label": "UTC+10 (Sydney)", "value": "600" },
+          { "label": "UTC+10:30 (Lord Howe)", "value": "630" },
+          { "label": "UTC+11 (Solomon Is.)", "value": "660" },
+          { "label": "UTC+12 (Auckland)", "value": "720" },
+          { "label": "UTC+13 (Samoa)", "value": "780" },
+          { "label": "UTC+14 (Line Is.)", "value": "840" }
+        ],
+        "defaultValue": "0"
       },
       "showPosts": {
         "type": "boolean",
