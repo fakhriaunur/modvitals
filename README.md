@@ -1,6 +1,6 @@
 # ModVitals
 
-**Automated daily health reports for your subreddit's moderation team.**
+**Automated health reports for your subreddit's moderation team — with enrichment, leaderboards, and anomaly detection.**
 
 v0.1.0 — Built on Devvit (Reddit's developer platform)
 
@@ -21,9 +21,14 @@ ModVitals fills this gap. It watches moderation events in real time, aggregates 
 
 - **Event Tracking** — Listens to post submissions, comment creation, and moderator actions (removes, approves, bans, warns, etc.)
 - **Metrics Aggregation** — Stores daily counts in Redis: posts, comments, removals, approvals, per-mod action totals, per-rule violations, and repeat offender scores
-- **Daily Reports** — A cron-driven scheduler generates a formatted Markdown post once per day (configurable to weekly)
+- **Daily Reports** — A cron-driven scheduler generates a formatted Markdown post once per day
 - **Trend Indicators** — Compares current period metrics against the previous period with ▲/▼ arrows and percentage change
-- **Configurable Settings** — Mods toggle which sections appear in the report (Activity Summary, Rule Violations, Repeat Offenders, Mod Activity)
+- **Reporting Presets** — Flexible scheduling frequencies: hourly, 4-hourly, 12-hourly, daily, weekly, or custom cron expression with timezone support
+- **Snapshot Reports** — On-demand 'Generate Report Now' menu action bypasses the cron schedule and produces an immediate [SNAPSHOT] report
+- **Karma Enrichment** — Repeat offender section shows link karma, comment karma, account age, snoovatar, and subreddit-specific karma with period-over-period deltas
+- **Mod Leaderboard & Inactive Alerts** — Ranked leaderboard of mods by action count, workload balance percentages, and configurable inactive-mod detection with warnings
+- **Anomaly Detection** — Compares daily metrics against a 7-day rolling average, flags spikes above 2× baseline with an alerts section at the top of the report
+- **Configurable Settings** — Mods toggle which sections and enrichment features appear in the report
 - **Mod-Only Visibility** — Reports are posted as distinguished, approved submissions so regular users never see them
 
 ## How It Works
@@ -49,6 +54,8 @@ ModVitals fills this gap. It watches moderation events in real time, aggregates 
 │  modActions:YYYYMMDD (hash)         │
 │  rules:YYYYMMDD   (hash)            │
 │  offenders        (sorted set)      │
+│  karma:YYYYMMDD   (hash)            │
+│  snapshots:YYYYMMDD (hash)          │
 │  lastReport       (string)          │
 └──────────────┬──────────────────────┘
                │
@@ -108,8 +115,11 @@ ModVitals exposes the following settings (configurable per-subreddit via Devvit'
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| Report Frequency | select | `daily` | `daily` or `weekly` |
-| Report Time (UTC) | number | `12` | Hour of day (0–23) for report generation |
+| Report Frequency | select | `daily` | `hourly`, `4-hourly`, `12-hourly`, `daily`, `weekly`, or `custom` |
+| Report Hour | number | `12` | Hour of day (0–23) for report generation |
+| Report Minute | number | `0` | Minute of hour (0–59) for report generation |
+| Timezone | select | `0` | UTC offset (e.g. `-300` for UTC-5, `480` for UTC+8) |
+| Custom Cron | string | — | 5-field cron expression when frequency is `custom` |
 | Show Post Count | toggle | `true` | Include post submission count in Activity Summary |
 | Show Comment Count | toggle | `true` | Include comment count in Activity Summary |
 | Show Removal Count | toggle | `true` | Include content removal count |
@@ -117,6 +127,11 @@ ModVitals exposes the following settings (configurable per-subreddit via Devvit'
 | Show Rule Violations | toggle | `true` | Include top violated rules section |
 | Show Repeat Offenders | toggle | `true` | Include repeat offenders section |
 | Show Mod Activity | toggle | `true` | Include moderator activity section |
+| Show Karma Stats | toggle | `false` | Enrich offenders with karma, account age, snoovatar |
+| Show Leaderboard | toggle | `true` | Show ranked mod leaderboard with workload percentages |
+| Show Inactive Alerts | toggle | `true` | Flag mods inactive beyond the threshold |
+| Inactive Threshold (days) | number | `5` | Days without action before marking mod as inactive |
+| Show Anomaly Alerts | toggle | `true` | Show anomaly/spike alerts based on 7-day rolling average |
 
 ## Report Sections
 
@@ -138,12 +153,28 @@ The most-frequently broken rules during the period, ranked by violation count. D
 
 Users whose content was removed multiple times, sorted by incident count. Scores persist across all time via a Redis sorted set. Disabled via `showTopOffenders`.
 
-### Mod Activity
+When karma enrichment is enabled (`showKarmaStats`), each offender entry shows:
 
-- **Top Moderators** — which mods performed the most actions
-- **Action Breakdown** — most common action types (removelink, approvecomment, banuser, etc.)
+- Link and comment karma totals (e.g. `1.2k karma`)
+- Account age (e.g. `3mo account`)
+- Subreddit-specific karma (e.g. `-15 sub karma`)
+- Snoovatar avatar image
+- Period-over-period karma delta
+
+### Mod Activity & Leaderboard
 
 Disabled via `showModActivity`.
+
+- **Leaderboard** — Ranked top 5 mods by action count with workload percentage (e.g. `1. u/mod1 — 42 actions (35%) [Most Active]`)
+- **Inactive Alerts** — Mods flagged when no actions recorded within the configurable threshold (default 5 days), with days-since-last-action shown (e.g. `⚠️ u/mod4 — 0 actions (0%) — Inactive 7 days`)
+
+### Anomaly Alerts
+
+When anomaly detection is enabled (`showAnomalyAlerts`), an **Alerts** section appears at the top of the report when any metric exceeds 2× its 7-day rolling average:
+
+- e.g. `⚠️ Unusual activity detected: 300% more removals than average (12 vs 4 avg). Possible brigading or spam wave.`
+
+When fewer than 7 days of data exist, a baseline-collection message is shown instead.
 
 ## Development
 
