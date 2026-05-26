@@ -4,6 +4,7 @@ import { getRequestListener } from '@hono/node-server';
 import { validateCron } from './cron-matcher.js';
 import registerTriggers from './routes/triggers.js';
 import registerScheduler from './routes/scheduler.js';
+import registerSnapshot from './routes/snapshot.js';
 
 // ---------------------------------------------------------------------------
 // App assembly
@@ -101,6 +102,7 @@ app.post('/internal/settings/validate-cron', async (c) => {
 // Register route modules
 registerTriggers(app);
 registerScheduler(app);
+registerSnapshot(app);
 
 // ---------------------------------------------------------------------------
 // Server startup

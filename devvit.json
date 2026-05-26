@@ -36,6 +36,17 @@
       }
     }
   },
+  "menu": {
+    "items": [
+      {
+        "label": "Generate Report Now",
+        "description": "Generate and post a current health report snapshot immediately",
+        "forUserType": "moderator",
+        "location": ["subreddit"],
+        "endpoint": "/internal/menu/generate-snapshot"
+      }
+    ]
+  },
   "settings": {
     "subreddit": {
       "reportFrequency": {

@@ -358,6 +358,7 @@ export function detectAnomalies(
 export async function generateReport(
   inactiveThresholdDays?: number,
   lastReportTimestampOverride?: string,
+  skipTimestampUpdate?: boolean,
 ): Promise<ReportData> {
   const dateKey = getDateKey();
   const prevDateKey = getPreviousDateKey(dateKey);
@@ -403,9 +404,13 @@ export async function generateReport(
   const previousReportTimestamp = await getLastReportTimestamp();
   const periodBoundary = lastReportTimestampOverride ?? previousReportTimestamp;
 
-  // Record this run (updates timestamp to now)
-  await updateLastReportTimestamp();
-  const lastReportTimestamp = await getLastReportTimestamp();
+  // Record this run (updates timestamp to now) — skip for snapshots to preserve cron schedule
+  if (!skipTimestampUpdate) {
+    await updateLastReportTimestamp();
+  }
+  const lastReportTimestamp = skipTimestampUpdate
+    ? previousReportTimestamp
+    : await getLastReportTimestamp();
 
   // Compute total actions for percentage calculation
   const totalModActions = modEntries.reduce((sum, m) => sum + m.count, 0);
