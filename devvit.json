@@ -83,8 +83,8 @@
       },
       "reportHour": {
         "type": "number",
-        "label": "Report Hour (UTC)",
-        "helpText": "Hour of day (0-23 UTC) when daily/weekly reports fire. Default 12 (noon UTC).",
+        "label": "Report Hour",
+        "helpText": "Hour of day (0-23) in the selected timezone when daily/weekly reports fire. Default: 12 (noon). Use the Timezone setting to set your local offset.",
         "defaultValue": 12,
         "validationEndpoint": "/internal/settings/validate-hour"
       },

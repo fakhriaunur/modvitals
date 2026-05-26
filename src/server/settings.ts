@@ -9,7 +9,7 @@ export type ReportFrequency = 'hourly' | '4-hourly' | '12-hourly' | 'daily' | 'w
 
 export interface ModVitalsSettings {
   reportFrequency: ReportFrequency;
-  /** Hour of day (0-23) used for daily/weekly presets */
+  /** Hour of day (0-23) in the configured timezone used for daily/weekly presets */
   reportHour: number;
   /** Minute of hour (0-59) used for hourly/4-hourly/12-hourly presets */
   reportMinute: number;
