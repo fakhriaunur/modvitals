@@ -5,7 +5,8 @@
  * and asTimezoneOffset.
  */
 
-import { shouldGenerateReport, asBoolean, asNumber, asFrequency, asTimezoneOffset } from './settings.js';
+import { shouldGenerateReport, asBoolean, asNumber, asFrequency, asTimezoneOffset, resolveEffectiveCron } from './settings.js';
+import type { ModVitalsSettings } from './settings.js';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -291,6 +292,81 @@ assertStrictEqual(asTimezoneOffset(undefined, 0), 0, 'undefined falls back to de
 assertStrictEqual(asTimezoneOffset('abc', 0), 0, 'invalid string falls back to default');
 assertStrictEqual(asTimezoneOffset(true, 0), 0, 'boolean falls back to default');
 assertStrictEqual(asTimezoneOffset('invalid', -300), -300, 'invalid string falls back to custom default');
+
+// ---------------------------------------------------------------------------
+// resolveEffectiveCron
+// ---------------------------------------------------------------------------
+console.log('\n--- resolveEffectiveCron ---');
+
+const baseSettings: ModVitalsSettings = {
+  reportFrequency: 'daily',
+  reportHour: 12,
+  reportMinute: 0,
+  customCron: '0 12 * * *',
+  timezoneOffset: 0,
+  showPosts: true,
+  showComments: true,
+  showRemovals: true,
+  showApprovals: true,
+  showRuleViolations: true,
+  showTopOffenders: true,
+  showModActivity: true,
+  showKarmaStats: true,
+  showLeaderboard: true,
+  showInactiveAlerts: true,
+  inactiveThresholdDays: 5,
+  showAnomalyAlerts: true,
+  showDebugInfo: false,
+};
+
+// hourly
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings, reportFrequency: 'hourly', reportMinute: 15 }),
+  '15 * * * *',
+  'hourly resolves to minute * * * *',
+);
+
+// 4-hourly
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings, reportFrequency: '4-hourly', reportMinute: 30 }),
+  '30 0,4,8,12,16,20 * * *',
+  '4-hourly resolves to minute 0,4,8,12,16,20 * * *',
+);
+
+// 12-hourly
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings, reportFrequency: '12-hourly', reportMinute: 0 }),
+  '0 0,12 * * *',
+  '12-hourly resolves to minute 0,12 * * *',
+);
+
+// daily
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings, reportFrequency: 'daily', reportHour: 8, reportMinute: 30 }),
+  '30 8 * * *',
+  'daily resolves to minute hour * * *',
+);
+
+// weekly
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings, reportFrequency: 'weekly', reportHour: 0, reportMinute: 0 }),
+  '0 0 * * 1',
+  'weekly resolves to minute hour * * 1',
+);
+
+// custom
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings, reportFrequency: 'custom', customCron: '*/5 * * * *' }),
+  '*/5 * * * *',
+  'custom returns raw customCron string',
+);
+
+// defaults (daily, 12:00)
+assertStrictEqual(
+  resolveEffectiveCron({ ...baseSettings }),
+  '0 12 * * *',
+  'default settings (daily, hour=12, minute=0) resolves to "0 12 * * *"',
+);
 
 // ---------------------------------------------------------------------------
 // Summary

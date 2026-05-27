@@ -196,6 +196,35 @@ export async function getSettings(): Promise<ModVitalsSettings> {
 }
 
 /**
+ * Resolve the effective cron expression from the current settings.
+ *
+ * Computes the equivalent 5-field cron string for each frequency preset using
+ * the configured report hour/minute, or returns the raw customCron string.
+ * Useful for debug display so users can see what the preset resolves to.
+ */
+export function resolveEffectiveCron(settings: ModVitalsSettings): string {
+  const { reportFrequency, reportMinute, reportHour, customCron } = settings;
+
+  switch (reportFrequency) {
+    case 'hourly':
+      return `${reportMinute} * * * *`;
+    case '4-hourly':
+      return `${reportMinute} 0,4,8,12,16,20 * * *`;
+    case '12-hourly':
+      return `${reportMinute} 0,12 * * *`;
+    case 'daily':
+      return `${reportMinute} ${reportHour} * * *`;
+    case 'weekly':
+      return `${reportMinute} ${reportHour} * * 1`;
+    case 'custom':
+      return customCron;
+    default:
+      // Fallback: treat as daily
+      return `${reportMinute} ${reportHour} * * *`;
+  }
+}
+
+/**
  * Apply a timezone offset (in minutes) to a Date and return hour/minute/day
  * pre-adjusted to that timezone.
  *

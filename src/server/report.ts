@@ -1,5 +1,6 @@
 import type { ReportData, TrendData, LeaderboardEntry, AnomalyData } from './scheduler-logic.js';
 import type { ModVitalsSettings } from './settings.js';
+import { resolveEffectiveCron } from './settings.js';
 import { formatDate } from './date-utils.js';
 import {
   formatAccountAge,
@@ -419,6 +420,7 @@ function formatDebugInfo(settings: ModVitalsSettings): string {
   const tzLabel = `UTC${sign}${offsetHours}${offsetMins > 0 ? `:${String(offsetMins).padStart(2, '0')}` : ''}`;
 
   lines.push(`- Report Frequency: ${settings.reportFrequency}`);
+  lines.push(`- Effective Cron: ${resolveEffectiveCron(settings)} (${settings.reportFrequency} preset)`);
   lines.push(`- Report Hour: ${settings.reportHour}`);
   lines.push(`- Report Minute: ${settings.reportMinute}`);
   lines.push(`- Timezone: ${tzLabel} (offset: ${settings.timezoneOffset})`);
