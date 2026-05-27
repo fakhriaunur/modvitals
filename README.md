@@ -29,6 +29,7 @@ ModVitals fills this gap. It watches moderation events in real time, aggregates 
 - **Mod Leaderboard & Inactive Alerts** — Ranked leaderboard of mods by action count, workload balance percentages, and configurable inactive-mod detection with warnings
 - **Anomaly Detection** — Compares daily metrics against a 7-day rolling average, flags spikes above 2× baseline with an alerts section at the top of the report
 - **Configurable Settings** — Mods toggle which sections and enrichment features appear in the report
+- **Debug Mode** — When enabled, the report header displays all current settings values and the resolved cron expression so you can verify your configuration at a glance
 - **Mod-Only Visibility** — Reports are posted as distinguished, approved submissions so regular users never see them
 
 ## How It Works
@@ -64,16 +65,18 @@ ModVitals fills this gap. It watches moderation events in real time, aggregates 
 ┌─────────────────────────────────────┐
 │         Scheduler (cron)            │
 │  1. Load mod settings               │
-│  2. Aggregate current period metrics│
-│  3. Compare with previous period    │
-│  4. Format Markdown report          │
-│  5. Submit as distinguished post    │
+│  2. Check frequency/hour gate       │
+│  3. Dedup (skip if already run)     │
+│  4. Aggregate current period metrics│
+│  5. Compare with previous period    │
+│  6. Format Markdown report          │
+│  7. Submit as distinguished post    │
 └─────────────────────────────────────┘
 ```
 
 1. **Triggers** — Three event hooks (`onPostSubmit`, `onCommentCreate`, `onModAction`) fire on subreddit activity and write metrics to Redis immediately
 2. **Redis** — Daily hash keys store numeric counters; a sorted set tracks repeat offenders across all time
-3. **Scheduler** — A cron task (`0 12 * * *` by default) invokes the report generator, which reads current and previous period data, computes trends, and applies mod-configured visibility toggles
+3. **Scheduler** — A heartbeat cron (`* * * * *`, every minute) invokes the report generator. On each tick, the handler loads runtime settings from Redis, checks `shouldGenerateReport()` against the configured frequency and timezone offset, applies dedup guards (daily/weekly: skip if already generated today; sub-hourly: skip if last report was under 60s ago), then aggregates metrics, computes trends, applies mod-configured visibility toggles, and posts the report
 4. **Report Post** — The formatted Markdown is submitted as a self-post, then distinguished and approved so only moderators see it
 
 ## Tech Stack
@@ -139,7 +142,7 @@ Each daily report is a Markdown post containing the following sections:
 
 ### Overview
 
-Top-level totals for the period: removals, approvals, posts, and comments, each with a trend arrow (▲ / ▼ / ➡ / ―) comparing against the previous period.
+Top-level totals for the period: removals, approvals, posts, and comments, each with a trend arrow (▲ / ▼ / ➡ / ―) comparing against the previous period. Each metric respects its corresponding visibility toggle (`showPosts`, `showComments`, `showRemovals`, `showApprovals`).
 
 ### Activity Summary
 
@@ -167,6 +170,15 @@ Disabled via `showModActivity`.
 
 - **Leaderboard** — Ranked top 5 mods by action count with workload percentage (e.g. `1. u/mod1 — 42 actions (35%) [Most Active]`)
 - **Inactive Alerts** — Mods flagged when no actions recorded within the configurable threshold (default 5 days), with days-since-last-action shown (e.g. `⚠️ u/mod4 — 0 actions (0%) — Inactive 7 days`)
+
+### Debug Info
+
+When debug mode is enabled (`showDebugInfo`), a **Debug Info** section appears at the top of the report showing:
+
+- All current settings values (frequency, hour, minute, timezone, all toggle states)
+- The resolved effective cron expression derived from the preset settings (e.g. `0 12 * * *` for daily at noon)
+
+This section helps mods verify their configuration is correct without checking the settings panel.
 
 ### Anomaly Alerts
 
