@@ -217,6 +217,12 @@
         "label": "Show Anomaly Alerts",
         "helpText": "Flag unusual activity spikes (2x above 7-day rolling average) in the report header. Detects potential brigading or spam waves.",
         "defaultValue": true
+      },
+      "showDebugInfo": {
+        "type": "boolean",
+        "label": "Debug Mode",
+        "helpText": "Show current configuration and settings at the top of each report. Useful for debugging.",
+        "defaultValue": false
       }
     }
   },

@@ -74,26 +74,41 @@ function formatBulletList<T>(
 
 /**
  * Format the Overview section.
+ * Respects metric visibility settings: showRemovals, showApprovals, showPosts, showComments.
+ * Reports are always shown (no toggle exists for reports).
  */
-function formatOverview(report: ReportData): string {
+function formatOverview(report: ReportData, settings?: ModVitalsSettings): string {
   const { metrics } = report.period;
   const { trends } = report;
 
   const lines: string[] = ['### Overview\n'];
 
   const totalActions =
-    metrics.removals + metrics.approvals + metrics.posts + metrics.comments;
+    (settings?.showRemovals !== false ? metrics.removals : 0) +
+    (settings?.showApprovals !== false ? metrics.approvals : 0) +
+    (settings?.showPosts !== false ? metrics.posts : 0) +
+    (settings?.showComments !== false ? metrics.comments : 0);
 
   if (totalActions === 0 && report.period.topRules.length === 0 && report.period.topOffenders.length === 0) {
     lines.push('No activity in this period.\n');
     return lines.join('\n');
   }
 
+  // Reports always shown — no toggle for reports
   lines.push(`- **Total Reports:** ${formatWithTrend(metrics.reports, trends.reports)}`);
-  lines.push(`- **Removals:** ${formatWithTrend(metrics.removals, trends.removals)}`);
-  lines.push(`- **Approvals:** ${formatWithTrend(metrics.approvals, trends.approvals)}`);
-  lines.push(`- **Posts:** ${formatWithTrend(metrics.posts, trends.posts)}`);
-  lines.push(`- **Comments:** ${formatWithTrend(metrics.comments, trends.comments)}`);
+
+  if (!settings || settings.showRemovals) {
+    lines.push(`- **Removals:** ${formatWithTrend(metrics.removals, trends.removals)}`);
+  }
+  if (!settings || settings.showApprovals) {
+    lines.push(`- **Approvals:** ${formatWithTrend(metrics.approvals, trends.approvals)}`);
+  }
+  if (!settings || settings.showPosts) {
+    lines.push(`- **Posts:** ${formatWithTrend(metrics.posts, trends.posts)}`);
+  }
+  if (!settings || settings.showComments) {
+    lines.push(`- **Comments:** ${formatWithTrend(metrics.comments, trends.comments)}`);
+  }
   lines.push('');
 
   return lines.join('\n');
@@ -387,6 +402,44 @@ function formatAlertsSection(anomalyData?: AnomalyData, showAnomalyAlerts?: bool
 }
 
 // ---------------------------------------------------------------------------
+// Debug Info Section
+// ---------------------------------------------------------------------------
+
+/**
+ * Format the debug info header showing current configuration and settings.
+ * Only shown when showDebugInfo is enabled in mod settings.
+ */
+function formatDebugInfo(settings: ModVitalsSettings): string {
+  const lines: string[] = ['### Debug Info\n'];
+
+  // Format timezone string from offset
+  const offsetHours = Math.floor(Math.abs(settings.timezoneOffset) / 60);
+  const offsetMins = Math.abs(settings.timezoneOffset) % 60;
+  const sign = settings.timezoneOffset >= 0 ? '+' : '-';
+  const tzLabel = `UTC${sign}${offsetHours}${offsetMins > 0 ? `:${String(offsetMins).padStart(2, '0')}` : ''}`;
+
+  lines.push(`- Report Frequency: ${settings.reportFrequency}`);
+  lines.push(`- Report Hour: ${settings.reportHour}`);
+  lines.push(`- Report Minute: ${settings.reportMinute}`);
+  lines.push(`- Timezone: ${tzLabel} (offset: ${settings.timezoneOffset})`);
+  lines.push(`- Show Posts: ${settings.showPosts}`);
+  lines.push(`- Show Comments: ${settings.showComments}`);
+  lines.push(`- Show Removals: ${settings.showRemovals}`);
+  lines.push(`- Show Approvals: ${settings.showApprovals}`);
+  lines.push(`- Show Rule Violations: ${settings.showRuleViolations}`);
+  lines.push(`- Show Repeat Offenders: ${settings.showTopOffenders}`);
+  lines.push(`- Show Mod Activity: ${settings.showModActivity}`);
+  lines.push(`- Show Karma Stats: ${settings.showKarmaStats}`);
+  lines.push(`- Show Leaderboard: ${settings.showLeaderboard}`);
+  lines.push(`- Show Inactive Alerts: ${settings.showInactiveAlerts}`);
+  lines.push(`- Inactive Threshold: ${settings.inactiveThresholdDays} days`);
+  lines.push(`- Show Anomaly Alerts: ${settings.showAnomalyAlerts}`);
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Main formatter
 // ---------------------------------------------------------------------------
 
@@ -414,6 +467,12 @@ export function formatReport(report: ReportData, settings?: ModVitalsSettings): 
   // Generated timestamp
   lines.push(`*Generated at ${new Date(report.generatedAt).toUTCString()}*\n`);
 
+  // Debug info — only shown when showDebugInfo is enabled
+  if (settings?.showDebugInfo) {
+    lines.push(formatDebugInfo(settings));
+    lines.push('---\n');
+  }
+
   // Anomaly alerts section — appears at the top when anomalies detected
   const alertsSection = formatAlertsSection(
     report.anomalyData,
@@ -426,7 +485,7 @@ export function formatReport(report: ReportData, settings?: ModVitalsSettings): 
 
   // Always show Overview (it's the header summary)
   lines.push('---\n');
-  lines.push(formatOverview(report));
+  lines.push(formatOverview(report, settings));
 
   // Conditionally show Activity Summary
   lines.push('---\n');

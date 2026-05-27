@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 import type { MenuItemRequest, UiResponse } from '@devvit/web/shared';
-import { generateReport } from '../scheduler-logic.js';
+import { generateReport, detectAnomalies, parseMetrics } from '../scheduler-logic.js';
 import { formatReport, buildReportTitle } from '../report.js';
 import { postReportToSubreddit } from '../posting.js';
 import { getSettings } from '../settings.js';
+import { getMultipleSnapshots } from '../metrics.js';
 import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
+import { getRelativeDateKey } from '../date-utils.js';
 
 // ---------------------------------------------------------------------------
 // Route registration — snapshot (on-demand menu action)
@@ -79,6 +81,34 @@ export default function registerSnapshot(app: Hono): void {
       }
 
       // NOTE: Do NOT store daily snapshot — avoids polluting anomaly baseline
+
+      // Compute anomaly alerts from 7-day rolling average if enabled
+      if (modSettings.showAnomalyAlerts) {
+        // Generate date keys for the previous 7 days (excluding today)
+        const dateKeys: string[] = [];
+        for (let i = 1; i <= 7; i++) {
+          dateKeys.push(getRelativeDateKey(report.period.dateKey, -i));
+        }
+
+        // Fetch snapshots from Redis in parallel
+        const snapshots = await getMultipleSnapshots(dateKeys);
+
+        // Parse snapshots into typed PeriodMetrics (skip empty/missing days)
+        const snapshotMetrics = dateKeys
+          .map((dk) => snapshots[dk])
+          .filter((raw): raw is Record<string, string> => !!raw && Object.keys(raw).length > 0)
+          .map((raw) => parseMetrics(raw));
+
+        // Detect anomalies
+        report.anomalyData = detectAnomalies(report.period.metrics, snapshotMetrics);
+
+        console.log('[snapshot:generate] anomaly detection complete', {
+          hasSufficientData: report.anomalyData.hasSufficientData,
+          baselineDays: report.anomalyData.baselineDays,
+          alertsCount: report.anomalyData.alerts.length,
+          alerts: report.anomalyData.alerts.map((a) => `${a.label}(${a.percentOfAverage}%)`),
+        });
+      }
 
       // Format the report with [SNAPSHOT] prefix in the title
       const baseTitle = buildReportTitle(report);

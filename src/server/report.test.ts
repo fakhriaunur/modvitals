@@ -349,6 +349,7 @@ const settingsHideKarma: ModVitalsSettings = {
   showInactiveAlerts: true,
   inactiveThresholdDays: 5,
   showAnomalyAlerts: true,
+  showDebugInfo: false,
 };
 const karmaBodyHidden = formatReport(karmaReport, settingsHideKarma);
 assertNotContains(karmaBodyHidden, 'account', 'Account age hidden when showKarmaStats=false');
@@ -415,6 +416,7 @@ const settingsNoLeaderboard: ModVitalsSettings = {
   showInactiveAlerts: true,
   inactiveThresholdDays: 5,
   showAnomalyAlerts: true,
+  showDebugInfo: false,
 };
 const lbBodyDisabled = formatReport(lbReport, settingsNoLeaderboard);
 assertNotContains(lbBodyDisabled, 'Top Moderators (Leaderboard)', 'Leaderboard disabled: no leaderboard header');
@@ -439,6 +441,7 @@ const settingsNoInactive: ModVitalsSettings = {
   showInactiveAlerts: false,
   inactiveThresholdDays: 5,
   showAnomalyAlerts: true,
+  showDebugInfo: false,
 };
 const lbBodyNoInactive = formatReport(lbReport, settingsNoInactive);
 assertNotContains(lbBodyNoInactive, '⚠️', 'Inactive disabled: no warning icon');
@@ -561,6 +564,7 @@ const settingsAnomalyDisabled: ModVitalsSettings = {
   showInactiveAlerts: true,
   inactiveThresholdDays: 5,
   showAnomalyAlerts: false,
+  showDebugInfo: false,
 };
 const disabledBody = formatReport(makeReportWithAnomalyData(anomalyWithAlerts), settingsAnomalyDisabled);
 assertNotContains(disabledBody, 'Anomaly Alerts', 'Anomaly alerts hidden when showAnomalyAlerts disabled');
