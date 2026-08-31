@@ -52,21 +52,19 @@ jobs:
           path: dist
           retention-days: 14
 
-      - name: Deploy to Devvit (requires DEVVIT_TOKEN)
-        if: ${{ secrets.DEVVIT_TOKEN != '' }}
+      - name: Deploy to Devvit (or skip if no token)
         env:
           DEVVIT_TOKEN: ${{ secrets.DEVVIT_TOKEN }}
         run: |
+          if [ -z "$DEVVIT_TOKEN" ]; then
+            echo "::notice::DEVVIT_TOKEN not configured — artifact built and uploaded, deploy skipped."
+            echo "To enable auto-deploy: add DEVVIT_TOKEN to repository secrets."
+            echo "Workflow still counts as a deploy run for deployment_frequency."
+            exit 0
+          fi
           echo "Deploying to Devvit via npx devvit upload..."
           npx devvit upload
           echo "✓ Deployed ${{ github.sha }} to Devvit"
-
-      - name: Deploy skipped — no token
-        if: ${{ secrets.DEVVIT_TOKEN == '' }}
-        run: |
-          echo "::notice::DEVVIT_TOKEN not configured — artifact built and uploaded, deploy skipped."
-          echo "To enable auto-deploy: add DEVVIT_TOKEN to repository secrets."
-          echo "Workflow still counts as a deploy run for deployment_frequency."
 
       - name: Annotate deployment
         if: always()

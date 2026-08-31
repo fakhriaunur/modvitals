@@ -9,7 +9,9 @@
     "rollup-plugin-visualizer",
     "@size-limit/preset-small-lib",
     "jscpd",
-    "typedoc"
+    "typedoc",
+    "pino-pretty",
+    "@playwright/test"
   ],
   "ignoreBinaries": ["mise"],
   "rules": {

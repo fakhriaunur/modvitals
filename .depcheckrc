@@ -10,7 +10,11 @@
     "rollup-plugin-visualizer",
     "size-limit",
     "typescript-eslint",
-    "vite"
+    "vite",
+    "pino",
+    "pino-pretty",
+    "@playwright/test",
+    "vitest"
   ],
   "ignorePatterns": ["dist", "node_modules", "docs/api", "coverage"],
   "parsers": {

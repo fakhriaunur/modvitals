@@ -72,8 +72,8 @@ run = "npx size-limit --json"
 
 # ── Test ───────────────────────────────────────────────────────────
 [tasks.test]
-description = "Run 7 suites via tsx (~452 assertions)"
-run = "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts && npx tsx src/server/cron-matcher.test.ts && npx tsx src/server/feature-flags.test.ts"
+description = "Run 8 suites: 7 via tsx (legacy harness) + 1 via vitest (structured logger)"
+run = "npx vitest run --reporter=verbose && npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts && npx tsx src/server/cron-matcher.test.ts && npx tsx src/server/feature-flags.test.ts"
 
 [tasks."test:timed"]
 description = "Per-suite timing"
