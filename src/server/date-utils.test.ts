@@ -5,7 +5,13 @@
  * and formatDate with various date keys including edge cases.
  */
 
-import { dateKeyToDate, dateToDateKey, getTodayDateKey, getRelativeDateKey, formatDate } from './date-utils.js';
+import {
+  dateKeyToDate,
+  dateToDateKey,
+  getTodayDateKey,
+  getRelativeDateKey,
+  formatDate,
+} from './date-utils.js';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -41,7 +47,11 @@ console.log('\n--- dateKeyToDate ---');
 
 const d1 = dateKeyToDate('20260524');
 assert(d1 instanceof Date, 'returns a Date object');
-assertStrictEqual(d1.toISOString().slice(0, 10), '2026-05-24', 'parses date key to correct UTC date');
+assertStrictEqual(
+  d1.toISOString().slice(0, 10),
+  '2026-05-24',
+  'parses date key to correct UTC date',
+);
 
 const d2 = dateKeyToDate('20260101');
 assertStrictEqual(d2.toISOString().slice(0, 10), '2026-01-01', 'parses year boundary date');
@@ -54,10 +64,26 @@ assertStrictEqual(d3.toISOString().slice(0, 10), '2024-02-29', 'parses leap year
 // ---------------------------------------------------------------------------
 console.log('\n--- dateToDateKey ---');
 
-assertStrictEqual(dateToDateKey(new Date(Date.UTC(2026, 4, 24))), '20260524', 'converts Date to date key');
-assertStrictEqual(dateToDateKey(new Date(Date.UTC(2026, 0, 1))), '20260101', 'converts January date');
-assertStrictEqual(dateToDateKey(new Date(Date.UTC(2026, 11, 31))), '20261231', 'converts December date');
-assertStrictEqual(dateToDateKey(new Date(Date.UTC(2024, 1, 29))), '20240229', 'converts leap year date');
+assertStrictEqual(
+  dateToDateKey(new Date(Date.UTC(2026, 4, 24))),
+  '20260524',
+  'converts Date to date key',
+);
+assertStrictEqual(
+  dateToDateKey(new Date(Date.UTC(2026, 0, 1))),
+  '20260101',
+  'converts January date',
+);
+assertStrictEqual(
+  dateToDateKey(new Date(Date.UTC(2026, 11, 31))),
+  '20261231',
+  'converts December date',
+);
+assertStrictEqual(
+  dateToDateKey(new Date(Date.UTC(2024, 1, 29))),
+  '20240229',
+  'converts leap year date',
+);
 
 // ---------------------------------------------------------------------------
 // getTodayDateKey
@@ -79,7 +105,11 @@ assertStrictEqual(getRelativeDateKey('20260524', -1), '20260523', 'gets previous
 // Next day
 assertStrictEqual(getRelativeDateKey('20260524', 1), '20260525', 'gets next day');
 // Month boundary
-assertStrictEqual(getRelativeDateKey('20260501', -1), '20260430', 'crosses month boundary backward');
+assertStrictEqual(
+  getRelativeDateKey('20260501', -1),
+  '20260430',
+  'crosses month boundary backward',
+);
 assertStrictEqual(getRelativeDateKey('20260430', 1), '20260501', 'crosses month boundary forward');
 // Year boundary
 assertStrictEqual(getRelativeDateKey('20260101', -1), '20251231', 'crosses year boundary backward');

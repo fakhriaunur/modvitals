@@ -1,0 +1,19 @@
+{
+  "entryPoints": ["src/server"],
+  "out": "docs/api",
+  "name": "ModVitals API",
+  "readme": "README.md",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeProtected": true,
+  "categorizeByGroup": true,
+  "categoryOrder": ["Routes", "Metrics", "Report", "Settings", "Karma", "Utils", "*"],
+  "sort": ["source-order"],
+  "searchInComments": true,
+  "validation": {
+    "notExported": false,
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}

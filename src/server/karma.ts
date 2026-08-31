@@ -46,16 +46,17 @@ export async function fetchUserKarma(username: string): Promise<KarmaInfo | null
       user.getUserKarmaFromCurrentSubreddit(),
     ]);
 
-    const snoovatarUrl =
-      snoovatarResult.status === 'fulfilled' ? snoovatarResult.value : undefined;
-    const subredditKarma =
-      subKarmaResult.status === 'fulfilled' ? subKarmaResult.value : undefined;
+    const snoovatarUrl = snoovatarResult.status === 'fulfilled' ? snoovatarResult.value : undefined;
+    const subredditKarma = subKarmaResult.status === 'fulfilled' ? subKarmaResult.value : undefined;
 
     if (snoovatarResult.status === 'rejected') {
       console.warn('[karma] snoovatar fetch failed', { username, err: snoovatarResult.reason });
     }
     if (subKarmaResult.status === 'rejected') {
-      console.warn('[karma] subreddit karma fetch failed', { username, err: subKarmaResult.reason });
+      console.warn('[karma] subreddit karma fetch failed', {
+        username,
+        err: subKarmaResult.reason,
+      });
     }
 
     return {
@@ -78,20 +79,13 @@ export async function fetchUserKarma(username: string): Promise<KarmaInfo | null
  * @param usernames - Array of Reddit usernames
  * @returns A Map of username → KarmaInfo | null for fetched users
  */
-export async function fetchUsersKarma(
-  usernames: string[],
-): Promise<Map<string, KarmaInfo | null>> {
-  const results = await Promise.allSettled(
-    usernames.map((u) => fetchUserKarma(u)),
-  );
+export async function fetchUsersKarma(usernames: string[]): Promise<Map<string, KarmaInfo | null>> {
+  const results = await Promise.allSettled(usernames.map((u) => fetchUserKarma(u)));
 
   const map = new Map<string, KarmaInfo | null>();
   for (let i = 0; i < usernames.length; i++) {
     const result = results[i];
-    map.set(
-      usernames[i],
-      result.status === 'fulfilled' ? result.value : null,
-    );
+    map.set(usernames[i], result.status === 'fulfilled' ? result.value : null);
   }
   return map;
 }
@@ -114,9 +108,7 @@ export async function storeOffenderKarmaSnapshots(
   const promises: Promise<void>[] = [];
   for (const [username, info] of karmaMap) {
     if (info !== null) {
-      promises.push(
-        storeKarmaSnapshot(dateKey, username, info.linkKarma, info.commentKarma),
-      );
+      promises.push(storeKarmaSnapshot(dateKey, username, info.linkKarma, info.commentKarma));
     }
   }
   await Promise.allSettled(promises);
@@ -145,7 +137,12 @@ export async function getKarmaDelta(
       commentDelta: current.commentKarma - previous.commentKarma,
     };
   } catch (err) {
-    console.error('[karma] failed to compute karma delta', { username, currentDateKey, previousDateKey, err });
+    console.error('[karma] failed to compute karma delta', {
+      username,
+      currentDateKey,
+      previousDateKey,
+      err,
+    });
     return null;
   }
 }
@@ -201,9 +198,10 @@ export function formatTotalKarma(linkKarma: number, commentKarma: number): strin
  * Format subreddit-specific karma for display.
  * Returns the sum of fromComments and fromPosts, with sign.
  */
-export function formatSubredditKarma(
-  subKarma?: { fromComments?: number; fromPosts?: number },
-): string | null {
+export function formatSubredditKarma(subKarma?: {
+  fromComments?: number;
+  fromPosts?: number;
+}): string | null {
   if (!subKarma) return null;
   const total = (subKarma.fromComments ?? 0) + (subKarma.fromPosts ?? 0);
   if (total === 0) return null;

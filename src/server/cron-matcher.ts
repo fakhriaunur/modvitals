@@ -131,7 +131,13 @@ export function validateCron(cron: string) {
     if (raw.startsWith('*/')) {
       const step = parseInt(raw.substring(2), 10);
       if (isNaN(step) || step < 1) {
-        return 'Invalid step value in ' + fieldNames[i] + ' field: "' + raw + '" -- step must be a positive integer';
+        return (
+          'Invalid step value in ' +
+          fieldNames[i] +
+          ' field: "' +
+          raw +
+          '" -- step must be a positive integer'
+        );
       }
       continue;
     }
@@ -142,7 +148,17 @@ export function validateCron(cron: string) {
       const trimmed = part.trim();
       const n = parseInt(trimmed, 10);
       if (isNaN(n) || n < min || n > max) {
-        return 'Invalid value "' + trimmed + '" in ' + fieldNames[i] + ' field. Expected a number between ' + min + ' and ' + max + '.';
+        return (
+          'Invalid value "' +
+          trimmed +
+          '" in ' +
+          fieldNames[i] +
+          ' field. Expected a number between ' +
+          min +
+          ' and ' +
+          max +
+          '.'
+        );
       }
     }
   }

@@ -157,7 +157,9 @@ export function getPreviousDateKey(dateKey?: string): string {
  * Returns array of { username, score } sorted highest score first.
  * Returns empty array if the key does not exist.
  */
-export async function getTopOffenders(limit: number = 10): Promise<{ username: string; score: number }[]> {
+export async function getTopOffenders(
+  limit: number = 10,
+): Promise<{ username: string; score: number }[]> {
   try {
     const results = await redis.zRange(KEY.offenders, 0, limit - 1, { reverse: true, by: 'rank' });
     return results.map((r) => ({ username: r.member, score: r.score }));
@@ -186,7 +188,10 @@ export async function getModsForDate(dateKey: string): Promise<Record<string, st
  * Returns array of { username, count } sorted descending by count.
  * Returns empty array if no data.
  */
-export async function getTopMods(dateKey: string, limit: number = 10): Promise<{ username: string; count: number }[]> {
+export async function getTopMods(
+  dateKey: string,
+  limit: number = 10,
+): Promise<{ username: string; count: number }[]> {
   const mods = await getModsForDate(dateKey);
   return topFromHash(
     mods,
@@ -215,7 +220,10 @@ export async function getRulesForDate(dateKey: string): Promise<Record<string, s
  * Returns array of { rule, count } sorted descending by count.
  * Returns empty array if no data.
  */
-export async function getTopRules(dateKey: string, limit: number = 10): Promise<{ rule: string; count: number }[]> {
+export async function getTopRules(
+  dateKey: string,
+  limit: number = 10,
+): Promise<{ rule: string; count: number }[]> {
   const rules = await getRulesForDate(dateKey);
   return topFromHash(
     rules,
@@ -231,7 +239,10 @@ export async function getTopRules(dateKey: string, limit: number = 10): Promise<
  * keys like "modname:actionType" → count.
  * Returns array of { action, count } sorted descending.
  */
-export async function getTopActionTypes(dateKey: string, limit: number = 10): Promise<{ action: string; count: number }[]> {
+export async function getTopActionTypes(
+  dateKey: string,
+  limit: number = 10,
+): Promise<{ action: string; count: number }[]> {
   try {
     const actions = await redis.hGetAll(KEY.modActions(dateKey));
     const entries = Object.entries(actions);
@@ -263,7 +274,7 @@ export async function getTopActionTypes(dateKey: string, limit: number = 10): Pr
  */
 export async function getLastReportTimestamp(): Promise<string | undefined> {
   try {
-    return await redis.get(KEY.lastReport) ?? undefined;
+    return (await redis.get(KEY.lastReport)) ?? undefined;
   } catch (error) {
     console.error('[metrics] failed to getLastReportTimestamp', { error });
     return undefined;
@@ -371,7 +382,13 @@ export async function storeKarmaSnapshot(
  */
 export async function storeDailySnapshot(
   dateKey: string,
-  metrics: { posts: number; comments: number; removals: number; approvals: number; reports: number },
+  metrics: {
+    posts: number;
+    comments: number;
+    removals: number;
+    approvals: number;
+    reports: number;
+  },
 ): Promise<void> {
   try {
     const key = KEY.snapshots(dateKey);

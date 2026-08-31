@@ -1,0 +1,20 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": [
+    "**/*.test.ts",
+    "dist/**",
+    "node_modules/**",
+    "docs/api/**",
+    "public/**",
+    ".devcontainer/**",
+    "coverage/**"
+  ],
+  "absolute": true,
+  "format": ["typescript", "javascript"],
+  "blame": false,
+  "cache": false,
+  "mode": "mild",
+  "minLines": 5,
+  "minTokens": 50
+}

@@ -11,7 +11,19 @@
     "launch": "npm run deploy && devvit publish",
     "login": "devvit login",
     "test": "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts && npx tsx src/server/cron-matcher.test.ts",
-    "type-check": "tsc --build"
+    "type-check": "tsc --build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:check": "eslint . --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\" \"*.{js,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\" \"*.{js,json,md}\"",
+    "knip": "knip",
+    "knip:check": "knip --no-progress",
+    "jscpd": "jscpd src --config .jscpd.json",
+    "quality": "npm run lint && npm run format:check && npm run knip:check && npm run jscpd",
+    "prepare": "husky",
+    "docs": "typedoc",
+    "docs:generate": "typedoc"
   },
   "engines": {
     "node": ">=22.2.0"
@@ -24,9 +36,27 @@
     "hono": "4.12.21"
   },
   "devDependencies": {
+    "@eslint/js": "^9.12.0",
     "@types/node": "^22.19.19",
+    "eslint": "^9.12.0",
+    "jscpd": "^4.0.5",
+    "knip": "^5.27.1",
+    "prettier": "^3.3.3",
     "tsx": "^4.22.3",
+    "typedoc": "^0.28.13",
     "typescript": "6.0.3",
-    "vite": "8.0.13"
+    "typescript-eslint": "^8.10.0",
+    "vite": "8.0.13",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,js,json}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,json,md}": [
+      "prettier --write --ignore-unknown"
+    ]
   }
 }

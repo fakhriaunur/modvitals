@@ -1,12 +1,8 @@
-import type { ReportData, TrendData, LeaderboardEntry, AnomalyData } from './scheduler-logic.js';
+import type { ReportData, AnomalyData } from './scheduler-logic.js';
 import type { ModVitalsSettings } from './settings.js';
 import { resolveEffectiveCron } from './settings.js';
 import { formatDate } from './date-utils.js';
-import {
-  formatAccountAge,
-  formatTotalKarma,
-  formatSubredditKarma,
-} from './karma.js';
+import { formatAccountAge, formatTotalKarma, formatSubredditKarma } from './karma.js';
 import type { KarmaInfo } from './karma.js';
 
 // ---------------------------------------------------------------------------
@@ -90,7 +86,11 @@ function formatOverview(report: ReportData, settings?: ModVitalsSettings): strin
     (settings?.showPosts !== false ? metrics.posts : 0) +
     (settings?.showComments !== false ? metrics.comments : 0);
 
-  if (totalActions === 0 && report.period.topRules.length === 0 && report.period.topOffenders.length === 0) {
+  if (
+    totalActions === 0 &&
+    report.period.topRules.length === 0 &&
+    report.period.topOffenders.length === 0
+  ) {
     lines.push('No activity in this period.\n');
     return lines.join('\n');
   }
@@ -121,7 +121,6 @@ function formatOverview(report: ReportData, settings?: ModVitalsSettings): strin
  */
 function formatActivitySummary(report: ReportData, settings?: ModVitalsSettings): string {
   const { metrics } = report.period;
-  const { trends } = report;
 
   const lines: string[] = ['### Activity Summary\n'];
 
@@ -133,10 +132,12 @@ function formatActivitySummary(report: ReportData, settings?: ModVitalsSettings)
     return lines.join('\n');
   }
 
-  const totalItems = (settings?.showPosts !== false ? metrics.posts : 0)
-    + (settings?.showComments !== false ? metrics.comments : 0);
-  const totalModActions = (settings?.showRemovals !== false ? metrics.removals : 0)
-    + (settings?.showApprovals !== false ? metrics.approvals : 0);
+  const totalItems =
+    (settings?.showPosts !== false ? metrics.posts : 0) +
+    (settings?.showComments !== false ? metrics.comments : 0);
+  const totalModActions =
+    (settings?.showRemovals !== false ? metrics.removals : 0) +
+    (settings?.showApprovals !== false ? metrics.approvals : 0);
 
   if (totalItems === 0 && totalModActions === 0) {
     lines.push('No user or moderator activity recorded.\n');
@@ -205,7 +206,7 @@ function formatOffenderLine(
   karma?: KarmaInfo | null,
   now?: Date,
 ): string {
-  let parts: string[] = [];
+  const parts: string[] = [];
 
   // Snoovatar image if available
   if (karma?.snoovatarUrl) {
@@ -391,7 +392,6 @@ function formatAlertsSection(anomalyData?: AnomalyData, showAnomalyAlerts?: bool
   lines.push('### ⚠️ Anomaly Alerts\n');
 
   for (const alert of anomalyData.alerts) {
-    const label = alert.label.charAt(0).toUpperCase() + alert.label.slice(1);
     lines.push(
       `- ⚠️ Unusual activity detected: ${alert.percentOfAverage}% more ${alert.label} than average (${alert.currentValue} vs ${Math.round(alert.averageValue)} avg). Possible brigading or spam wave.`,
     );
@@ -420,7 +420,9 @@ function formatDebugInfo(settings: ModVitalsSettings): string {
   const tzLabel = `UTC${sign}${offsetHours}${offsetMins > 0 ? `:${String(offsetMins).padStart(2, '0')}` : ''}`;
 
   lines.push(`- Report Frequency: ${settings.reportFrequency}`);
-  lines.push(`- Effective Cron: ${resolveEffectiveCron(settings)} (${settings.reportFrequency} preset)`);
+  lines.push(
+    `- Effective Cron: ${resolveEffectiveCron(settings)} (${settings.reportFrequency} preset)`,
+  );
   lines.push(`- Report Hour: ${settings.reportHour}`);
   lines.push(`- Report Minute: ${settings.reportMinute}`);
   lines.push(`- Timezone: ${tzLabel} (offset: ${settings.timezoneOffset})`);
@@ -535,7 +537,11 @@ export function buildReportTitle(report: ReportData): string {
   const { metrics } = report.period;
   const totalActions = metrics.removals + metrics.approvals + metrics.posts + metrics.comments;
 
-  if (totalActions === 0 && report.period.topRules.length === 0 && report.period.topOffenders.length === 0) {
+  if (
+    totalActions === 0 &&
+    report.period.topRules.length === 0 &&
+    report.period.topOffenders.length === 0
+  ) {
     return `ModVitals Health Report — ${dateStr} (No Activity)`;
   }
 

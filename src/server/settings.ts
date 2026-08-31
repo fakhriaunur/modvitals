@@ -86,7 +86,8 @@ export function asNumber(value: unknown, defaultValue: number): number {
  */
 export function asFrequency(value: unknown, defaultValue: ReportFrequency): ReportFrequency {
   const valid: ReportFrequency[] = ['hourly', '4-hourly', '12-hourly', 'daily', 'weekly', 'custom'];
-  if (typeof value === 'string' && (valid as string[]).includes(value)) return value as ReportFrequency;
+  if (typeof value === 'string' && (valid as string[]).includes(value))
+    return value as ReportFrequency;
   return defaultValue;
 }
 
@@ -185,7 +186,10 @@ export async function getSettings(): Promise<ModVitalsSettings> {
       showKarmaStats: asBoolean(showKarmaStats, DEFAULT_SETTINGS.showKarmaStats),
       showLeaderboard: asBoolean(showLeaderboard, DEFAULT_SETTINGS.showLeaderboard),
       showInactiveAlerts: asBoolean(showInactiveAlerts, DEFAULT_SETTINGS.showInactiveAlerts),
-      inactiveThresholdDays: asNumber(inactiveThresholdDays, DEFAULT_SETTINGS.inactiveThresholdDays),
+      inactiveThresholdDays: asNumber(
+        inactiveThresholdDays,
+        DEFAULT_SETTINGS.inactiveThresholdDays,
+      ),
       showAnomalyAlerts: asBoolean(showAnomalyAlerts, DEFAULT_SETTINGS.showAnomalyAlerts),
       showDebugInfo: asBoolean(showDebugInfo, DEFAULT_SETTINGS.showDebugInfo),
     };

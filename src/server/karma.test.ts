@@ -88,16 +88,17 @@ assert(
 const twoYearsThreeMoAgo = new Date(now);
 twoYearsThreeMoAgo.setUTCFullYear(now.getUTCFullYear() - 2);
 twoYearsThreeMoAgo.setUTCMonth(now.getUTCMonth() - 3);
-assertStrictEqual(formatAccountAge(twoYearsThreeMoAgo, now), '2y 3mo account', '2 years 3 months ago');
+assertStrictEqual(
+  formatAccountAge(twoYearsThreeMoAgo, now),
+  '2y 3mo account',
+  '2 years 3 months ago',
+);
 
 // Created long ago (5 years)
 const fiveYearsAgo = new Date(now);
 fiveYearsAgo.setUTCFullYear(now.getUTCFullYear() - 5);
 const fiveYearResult = formatAccountAge(fiveYearsAgo, now);
-assert(
-  fiveYearResult.includes('5y'),
-  `5 years ago shows "5y": "${fiveYearResult}"`,
-);
+assert(fiveYearResult.includes('5y'), `5 years ago shows "5y": "${fiveYearResult}"`);
 
 // ---------------------------------------------------------------------------
 // formatTotalKarma
@@ -115,11 +116,7 @@ assertStrictEqual(formatTotalKarma(-100, 50), '-50', 'negative total');
 // ---------------------------------------------------------------------------
 console.log('\n--- formatSubredditKarma ---');
 
-assertStrictEqual(
-  formatSubredditKarma(undefined),
-  null,
-  'undefined returns null',
-);
+assertStrictEqual(formatSubredditKarma(undefined), null, 'undefined returns null');
 assertStrictEqual(
   formatSubredditKarma({ fromComments: 0, fromPosts: 0 }),
   null,
@@ -145,11 +142,7 @@ assertStrictEqual(
   '-5 sub karma',
   'only comment karma negative',
 );
-assertStrictEqual(
-  formatSubredditKarma({}),
-  null,
-  'empty object with no fields returns null',
-);
+assertStrictEqual(formatSubredditKarma({}), null, 'empty object with no fields returns null');
 
 // ---------------------------------------------------------------------------
 // Summary

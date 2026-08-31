@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/server/index.ts", "src/server/server.ts"],
+  "project": ["src/**/*.ts"],
+  "ignore": ["src/**/*.test.ts"],
+  "ignoreDependencies": ["hono", "@devvit/*", "@hono/node-server"],
+  "rules": {
+    "files": "warn",
+    "dependencies": "warn",
+    "unlisted": "error",
+    "binaries": "warn",
+    "unresolved": "error",
+    "exports": "warn",
+    "types": "warn",
+    "nsExports": "warn",
+    "nsTypes": "warn",
+    "duplicates": "warn",
+    "enumMembers": "warn",
+    "classMembers": "warn"
+  }
+}

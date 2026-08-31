@@ -1,0 +1,46 @@
+#!/usr/bin/env sh
+# Husky pre-commit: quality gates for Code Quality & Style
+# 1) lint-staged (eslint --fix + prettier)
+# 2) large-file guard (>500KB or >500 lines)
+# 3) knip hint (warn, not block) — uncomment to enforce
+
+npx lint-staged
+LINT_STAGED_EXIT=$?
+if [ $LINT_STAGED_EXIT -ne 0 ]; then
+  echo "✖ lint-staged failed — fix lint/format errors before committing"
+  exit $LINT_STAGED_EXIT
+fi
+
+# ── Large file guard: block files >500KB or >500 lines (skip LFS-tracked) ──
+# Check staged files (excluding deleted)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+LARGE_FOUND=0
+for f in $STAGED_FILES; do
+  [ -f "$f" ] || continue
+  # Skip LFS-tracked patterns (png/jpg/gif/mp4/zip)
+  case "$f" in *.png|*.jpg|*.jpeg|*.gif|*.mp4|*.zip) continue ;; esac
+  # Size check (500KB)
+  if [ "$(uname)" = "Darwin" ]; then
+    SIZE=$(stat -f%z "$f" 2>/dev/null || echo 0)
+  else
+    SIZE=$(stat -c%s "$f" 2>/dev/null || wc -c < "$f" 2>/dev/null | tr -d ' ')
+  fi
+  if [ "$SIZE" -gt 512000 ]; then
+    echo "✖ Large file blocked: $f ($SIZE bytes > 512KB) — use Git LFS or split the file"
+    LARGE_FOUND=1
+  fi
+  # Line count check (500 lines) for TS/JS
+  case "$f" in *.ts|*.js|*.tsx|*.jsx)
+    LINES=$(wc -l < "$f" 2>/dev/null | tr -d ' ')
+    if [ "$LINES" -gt 500 ]; then
+      echo "⚠ Large file warning: $f ($LINES lines > 500) — consider splitting (eslint max-lines also checks this)"
+    fi
+    ;;
+  esac
+done
+if [ $LARGE_FOUND -eq 1 ]; then
+  exit 1
+fi
+
+# ── Optional: dead-code quick check (warn only) ──
+# npx knip --no-progress --reporter compact || echo "⚠ knip found unused exports — run: npm run knip"

@@ -6,7 +6,13 @@
  * and aggregateReport (pure aggregation from data).
  */
 
-import { parseMetrics, computeTrend, aggregateReport, computeLeaderboard, detectAnomalies } from './scheduler-logic.js';
+import {
+  parseMetrics,
+  computeTrend,
+  aggregateReport,
+  computeLeaderboard,
+  detectAnomalies,
+} from './scheduler-logic.js';
 import type { PeriodMetrics } from './scheduler-logic.js';
 
 // ---------------------------------------------------------------------------
@@ -54,7 +60,13 @@ function assertDeepEqual<T>(actual: T, expected: T, message: string): void {
 console.log('\n--- parseMetrics ---');
 
 // Normal case
-const normal = parseMetrics({ posts: '10', comments: '20', removals: '5', approvals: '3', reports: '1' });
+const normal = parseMetrics({
+  posts: '10',
+  comments: '20',
+  removals: '5',
+  approvals: '3',
+  reports: '1',
+});
 assertStrictEqual(normal.posts, 10, 'parses posts');
 assertStrictEqual(normal.comments, 20, 'parses comments');
 assertStrictEqual(normal.removals, 5, 'parses removals');
@@ -93,7 +105,13 @@ assertStrictEqual(partial.approvals, 0, 'partial missing approvals defaults to 0
 assertStrictEqual(partial.reports, 0, 'partial missing reports defaults to 0');
 
 // Zero values
-const zeros = parseMetrics({ posts: '0', comments: '0', removals: '0', approvals: '0', reports: '0' });
+const zeros = parseMetrics({
+  posts: '0',
+  comments: '0',
+  removals: '0',
+  approvals: '0',
+  reports: '0',
+});
 assertStrictEqual(zeros.posts, 0, 'zero posts parsed correctly');
 assertStrictEqual(zeros.comments, 0, 'zero comments parsed correctly');
 
@@ -134,9 +152,27 @@ assertStrictEqual(computeTrend(5, 3), 67, '66.67% rounds to 67');
 // ---------------------------------------------------------------------------
 console.log('\n--- aggregateReport ---');
 
-const emptyMetrics: PeriodMetrics = { posts: 0, comments: 0, removals: 0, approvals: 0, reports: 0 };
-const activeMetrics: PeriodMetrics = { posts: 15, comments: 42, removals: 8, approvals: 5, reports: 3 };
-const prevMetrics: PeriodMetrics = { posts: 10, comments: 30, removals: 5, approvals: 3, reports: 1 };
+const emptyMetrics: PeriodMetrics = {
+  posts: 0,
+  comments: 0,
+  removals: 0,
+  approvals: 0,
+  reports: 0,
+};
+const activeMetrics: PeriodMetrics = {
+  posts: 15,
+  comments: 42,
+  removals: 8,
+  approvals: 5,
+  reports: 3,
+};
+const prevMetrics: PeriodMetrics = {
+  posts: 10,
+  comments: 30,
+  removals: 5,
+  approvals: 3,
+  reports: 1,
+};
 
 // With previous data (normal case)
 const reportWithPrev = aggregateReport(
@@ -157,8 +193,16 @@ const reportWithPrev = aggregateReport(
 assertStrictEqual(reportWithPrev.period.dateKey, '20260524', 'sets dateKey');
 assertStrictEqual(reportWithPrev.previousPeriod.exists, true, 'prev exists flag true');
 assertStrictEqual(reportWithPrev.previousPeriod.dateKey, '20260523', 'prev dateKey set');
-assertDeepEqual(reportWithPrev.trends, { posts: 50, comments: 40, removals: 60, approvals: 67, reports: 200 }, 'trends computed correctly');
-assertStrictEqual(reportWithPrev.lastReportTimestamp, '2026-05-23T12:00:00.000Z', 'lastReportTimestamp set');
+assertDeepEqual(
+  reportWithPrev.trends,
+  { posts: 50, comments: 40, removals: 60, approvals: 67, reports: 200 },
+  'trends computed correctly',
+);
+assertStrictEqual(
+  reportWithPrev.lastReportTimestamp,
+  '2026-05-23T12:00:00.000Z',
+  'lastReportTimestamp set',
+);
 assertStrictEqual(reportWithPrev.generatedAt, '2026-05-24T12:00:00.000Z', 'generatedAt set');
 assertDeepEqual(reportWithPrev.period.leaderboard, [], 'leaderboard empty when not provided');
 
@@ -181,7 +225,11 @@ const reportNoPrev = aggregateReport(
 assertStrictEqual(reportNoPrev.previousPeriod.exists, false, 'prev exists flag false when null');
 assertStrictEqual(reportNoPrev.previousPeriod.dateKey, null, 'prev dateKey null when no prev');
 assertStrictEqual(reportNoPrev.previousPeriod.metrics, null, 'prev metrics null when no prev');
-assertDeepEqual(reportNoPrev.trends, { posts: null, comments: null, removals: null, approvals: null, reports: null }, 'trends all null when no prev');
+assertDeepEqual(
+  reportNoPrev.trends,
+  { posts: null, comments: null, removals: null, approvals: null, reports: null },
+  'trends all null when no prev',
+);
 
 // Empty metrics
 const reportEmpty = aggregateReport(
@@ -227,14 +275,7 @@ const lastActionTimestamps: Record<string, string> = {
 };
 
 // Normal leaderboard (threshold 5 days)
-const board = computeLeaderboard(
-  mods,
-  100,
-  lastActionTimestamps,
-  undefined,
-  5,
-  5,
-);
+const board = computeLeaderboard(mods, 100, lastActionTimestamps, undefined, 5, 5);
 
 assertStrictEqual(board.length, 4, 'leaderboard has 4 entries');
 assertStrictEqual(board[0].rank, 1, 'entry 1 rank is 1');
@@ -260,7 +301,10 @@ assertStrictEqual(board[3].username, 'mod4', 'entry 4 is mod4');
 assertStrictEqual(board[3].pct, 5, 'entry 4 is 5%');
 assert(board[3].isMostActive === false, 'entry 4 is not most active');
 assert(board[3].isInactive === true, 'mod4 has no timestamp, so is inactive');
-assert(board[3].daysSinceLastAction === undefined, 'mod4 daysSinceLastAction undefined (no timestamp available)');
+assert(
+  board[3].daysSinceLastAction === undefined,
+  'mod4 daysSinceLastAction undefined (no timestamp available)',
+);
 
 // Empty mods list
 const emptyBoard = computeLeaderboard([], 0, {}, undefined, 5, 5);
@@ -284,27 +328,13 @@ const zeroMods = [
   { username: 'mod1', count: 0 },
   { username: 'mod2', count: 0 },
 ];
-const zeroBoard = computeLeaderboard(
-  zeroMods,
-  0,
-  {},
-  undefined,
-  5,
-  5,
-);
+const zeroBoard = computeLeaderboard(zeroMods, 0, {}, undefined, 5, 5);
 assertStrictEqual(zeroBoard.length, 2, 'zero-count mods still appear');
 assert(zeroBoard[0].isMostActive === false, 'zero-count mod1 not most active');
 assert(zeroBoard[0].isInactive === true, 'zero-count mod1 is inactive (no timestamp)');
 
 // Stricter threshold (2 days)
-const strictBoard = computeLeaderboard(
-  mods,
-  100,
-  lastActionTimestamps,
-  undefined,
-  2,
-  5,
-);
+const strictBoard = computeLeaderboard(mods, 100, lastActionTimestamps, undefined, 2, 5);
 assert(strictBoard[0].isInactive === false, 'mod1 not inactive with 2-day threshold (1 day ago)');
 assert(strictBoard[1].isInactive === true, 'mod2 inactive with 2-day threshold (3 days ago)');
 assert(strictBoard[2].isInactive === true, 'mod3 inactive with 2-day threshold (5 days ago)');
@@ -321,27 +351,53 @@ function makeSnapshot(value: number): PeriodMetrics {
 
 // Sufficient data (7 snapshots) with an anomaly
 const sevenSnapshots = Array.from({ length: 7 }, () => makeSnapshot(10));
-const highCurrent: PeriodMetrics = { posts: 10, comments: 10, removals: 30, approvals: 10, reports: 10 };
+const highCurrent: PeriodMetrics = {
+  posts: 10,
+  comments: 10,
+  removals: 30,
+  approvals: 10,
+  reports: 10,
+};
 const anomalyResult = detectAnomalies(highCurrent, sevenSnapshots);
 
 assert(anomalyResult.hasSufficientData === true, 'hasSufficientData true with 7 snapshots');
 assertStrictEqual(anomalyResult.baselineDays, 7, 'baselineDays is 7');
-assertStrictEqual(anomalyResult.alerts.length, 1, 'one anomaly detected (removals 30 > 2x avg of 10)');
+assertStrictEqual(
+  anomalyResult.alerts.length,
+  1,
+  'one anomaly detected (removals 30 > 2x avg of 10)',
+);
 assertStrictEqual(anomalyResult.alerts[0].metric, 'removals', 'anomaly metric is removals');
 assertStrictEqual(anomalyResult.alerts[0].currentValue, 30, 'current value is 30');
 assertStrictEqual(anomalyResult.alerts[0].averageValue, 10, 'average value is 10');
 assertStrictEqual(anomalyResult.alerts[0].percentOfAverage, 300, '300% of average');
 
 // Multiple anomalies
-const multiHigh: PeriodMetrics = { posts: 30, comments: 10, removals: 25, approvals: 10, reports: 10 };
+const multiHigh: PeriodMetrics = {
+  posts: 30,
+  comments: 10,
+  removals: 25,
+  approvals: 10,
+  reports: 10,
+};
 const multiResult = detectAnomalies(multiHigh, sevenSnapshots);
 assert(multiResult.hasSufficientData === true, 'hasSufficientData still true');
-assertStrictEqual(multiResult.alerts.length, 2, 'two anomalies detected (posts 30, removals 25 > 2x avg of 10)');
+assertStrictEqual(
+  multiResult.alerts.length,
+  2,
+  'two anomalies detected (posts 30, removals 25 > 2x avg of 10)',
+);
 assertStrictEqual(multiResult.alerts[0].metric, 'posts', 'first anomaly is posts');
 assertStrictEqual(multiResult.alerts[1].metric, 'removals', 'second anomaly is removals');
 
 // No anomalies — all metrics within normal range
-const normalMetrics: PeriodMetrics = { posts: 15, comments: 19, removals: 5, approvals: 8, reports: 2 };
+const normalMetrics: PeriodMetrics = {
+  posts: 15,
+  comments: 19,
+  removals: 5,
+  approvals: 8,
+  reports: 2,
+};
 const noAnomalyResult = detectAnomalies(normalMetrics, sevenSnapshots);
 assert(noAnomalyResult.hasSufficientData === true, 'hasSufficientData true');
 assertStrictEqual(noAnomalyResult.alerts.length, 0, 'no alerts when all metrics within 2x range');
@@ -366,13 +422,24 @@ assert(exact7Result.hasSufficientData === true, 'exactly 7 snapshots has suffici
 
 // Zero rolling average is skipped (avoids division by zero)
 const zeroAvgSnapshots = Array.from({ length: 7 }, () => makeSnapshot(0));
-const zeroAvgCurrent: PeriodMetrics = { posts: 10, comments: 0, removals: 0, approvals: 0, reports: 0 };
+const zeroAvgCurrent: PeriodMetrics = {
+  posts: 10,
+  comments: 0,
+  removals: 0,
+  approvals: 0,
+  reports: 0,
+};
 const zeroAvgResult = detectAnomalies(zeroAvgCurrent, zeroAvgSnapshots);
 assert(zeroAvgResult.hasSufficientData === true, 'hasSufficientData true even with zero avg');
-assertStrictEqual(zeroAvgResult.alerts.length, 0, 'no alerts when rolling average is zero (skipped)');
+assertStrictEqual(
+  zeroAvgResult.alerts.length,
+  0,
+  'no alerts when rolling average is zero (skipped)',
+);
 
 // Verify format: metric labels match expected keys
-const labelCheck = detectAnomalies(highCurrent, sevenSnapshots);
+const _labelCheck = detectAnomalies(highCurrent, sevenSnapshots);
+void _labelCheck;
 const metricLabels = ['posts', 'comments', 'removals', 'approvals', 'reports'];
 for (const ml of metricLabels) {
   assert(typeof ml === 'string', `metric label "${ml}" is a string`);

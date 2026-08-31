@@ -4,7 +4,12 @@ import { generateReport, detectAnomalies, parseMetrics } from '../scheduler-logi
 import { formatReport, buildReportTitle } from '../report.js';
 import { postReportToSubreddit } from '../posting.js';
 import { getSettings, shouldGenerateReport } from '../settings.js';
-import { wasReportGeneratedToday, getLastReportTimestamp, storeDailySnapshot, getMultipleSnapshots } from '../metrics.js';
+import {
+  wasReportGeneratedToday,
+  getLastReportTimestamp,
+  storeDailySnapshot,
+  getMultipleSnapshots,
+} from '../metrics.js';
 import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
 import { getRelativeDateKey } from '../date-utils.js';
 
@@ -63,7 +68,9 @@ export default function registerScheduler(app: Hono): void {
       // Dedup: skip "already generated today" check for sub-hourly presets
       // (hourly, 4-hourly, 12-hourly, custom can all fire multiple times per day).
       // For daily/weekly, apply the dedup to prevent double-fires within the same window.
-      const isSubHourly = ['hourly', '4-hourly', '12-hourly', 'custom'].includes(modSettings.reportFrequency);
+      const isSubHourly = ['hourly', '4-hourly', '12-hourly', 'custom'].includes(
+        modSettings.reportFrequency,
+      );
       if (!isSubHourly) {
         const alreadyGenerated = await wasReportGeneratedToday();
         if (alreadyGenerated) {
@@ -82,9 +89,7 @@ export default function registerScheduler(app: Hono): void {
         }
       }
 
-      const report = await generateReport(
-        modSettings.inactiveThresholdDays,
-      );
+      const report = await generateReport(modSettings.inactiveThresholdDays);
 
       console.log('[scheduler:generate-report] aggregation complete', {
         dateKey: report.period.dateKey,

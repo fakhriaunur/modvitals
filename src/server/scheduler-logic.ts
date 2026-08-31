@@ -300,7 +300,11 @@ export function detectAnomalies(
 
   // Compute rolling average for each metric
   const metricNames: (keyof PeriodMetrics)[] = [
-    'posts', 'comments', 'removals', 'approvals', 'reports',
+    'posts',
+    'comments',
+    'removals',
+    'approvals',
+    'reports',
   ];
   const averages: Record<string, number> = {};
 

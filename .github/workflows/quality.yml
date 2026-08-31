@@ -1,0 +1,121 @@
+name: quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint (eslint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -- --max-warnings 0
+
+  format:
+    name: format (prettier)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+
+  dead-code:
+    name: dead-code (knip)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run knip:check
+
+  duplicate-code:
+    name: duplicate-code (jscpd)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run jscpd
+
+  complexity:
+    name: complexity gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # complexity + max-lines are enforced via eslint.config.js; re-running lint surfaces them
+      - run: npm run lint -- --max-warnings 0
+
+  large-file:
+    name: large-file guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for large files
+        run: |
+          echo "Checking for files >500KB or >500 lines (excluding LFS)..."
+          LARGE=0
+          for f in $(find src -type f -name "*.ts" | xargs -r wc -l | awk '$1>500 {print $2}'); do
+            echo "::error file=$f::File exceeds 500 lines"
+            LARGE=1
+          done
+          # Size check via git ls-files
+          for f in $(git ls-files | xargs -I{} sh -c 'if [ -f "{}" ]; then echo "$(stat -c%s "{}" 2>/dev/null || stat -f%z "{}" 2>/dev/null) {}"; fi' | awk '$1>512000 {print $2}'); do
+            echo "::error file=$f::File exceeds 512KB"
+            LARGE=1
+          done
+          if [ "$LARGE" = "1" ]; then exit 1; fi
+          echo "✓ No large files detected"
+
+  tech-debt:
+    name: tech-debt scanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Scan for TODO/FIXME without ticket
+        run: |
+          echo "Scanning for TODO/FIXME markers..."
+          # Allow TODO(TICKET-123) but warn on bare TODO
+          BARE=$(grep -R --include="*.ts" -n "TODO[^ (]*\|FIXME[^ (]*" src || true)
+          # Filter out TODO(TICKET) and TODO(#123) patterns
+          BARE_TICKET=$(echo "$BARE" | grep -v "TODO(.*)" | grep -v "FIXME(.*)" || true)
+          if [ -n "$BARE_TICKET" ]; then
+            echo "::warning::Bare TODO/FIXME without ticket reference found:"
+            echo "$BARE_TICKET"
+            echo "Prefer: TODO(JIRA-123) or TODO(#42) — see eslint no-warning-comments"
+          else
+            echo "✓ No bare TODO/FIXME found"
+          fi
+          # eslint also enforces no-warning-comments as warn; lint step covers it
+          npm run lint

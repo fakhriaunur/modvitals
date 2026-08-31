@@ -56,10 +56,7 @@ const REMOVAL_ACTIONS = new Set([
   'spamcomment',
 ] as const);
 
-const APPROVAL_ACTIONS = new Set([
-  'approvelink',
-  'approvecomment',
-] as const);
+const APPROVAL_ACTIONS = new Set(['approvelink', 'approvecomment'] as const);
 
 /**
  * Handle a mod-action trigger event.

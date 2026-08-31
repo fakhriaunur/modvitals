@@ -81,14 +81,14 @@ ModVitals fills this gap. It watches moderation events in real time, aggregates 
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Platform | [Devvit](https://developers.reddit.com/) v0.12.24 |
-| Language | TypeScript 6.0 |
-| Server Framework | Hono 4.12 (via `@hono/node-server`) |
-| Data Store | Redis (Devvit-managed, via `@devvit/web`) |
-| Bundler | Vite 8.0 |
-| Node.js | >= 22.2.0 |
+| Component        | Technology                                        |
+| ---------------- | ------------------------------------------------- |
+| Platform         | [Devvit](https://developers.reddit.com/) v0.12.24 |
+| Language         | TypeScript 6.0                                    |
+| Server Framework | Hono 4.12 (via `@hono/node-server`)               |
+| Data Store       | Redis (Devvit-managed, via `@devvit/web`)         |
+| Bundler          | Vite 8.0                                          |
+| Node.js          | >= 22.2.0                                         |
 
 ## Prerequisites
 
@@ -116,25 +116,25 @@ Once installed, the app starts collecting metrics immediately. The first report 
 
 ModVitals exposes the following settings (configurable per-subreddit via Devvit's settings UI):
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| Report Frequency | select | `daily` | `hourly`, `4-hourly`, `12-hourly`, `daily`, `weekly`, or `custom` |
-| Report Hour | number | `12` | Hour of day (0–23) for report generation |
-| Report Minute | number | `0` | Minute of hour (0–59) for report generation |
-| Timezone | select | `0` | UTC offset (e.g. `-300` for UTC-5, `480` for UTC+8) |
-| Custom Cron | string | — | 5-field cron expression when frequency is `custom` |
-| Show Post Count | toggle | `true` | Include post submission count in Activity Summary |
-| Show Comment Count | toggle | `true` | Include comment count in Activity Summary |
-| Show Removal Count | toggle | `true` | Include content removal count |
-| Show Approval Count | toggle | `true` | Include content approval count |
-| Show Rule Violations | toggle | `true` | Include top violated rules section |
-| Show Repeat Offenders | toggle | `true` | Include repeat offenders section |
-| Show Mod Activity | toggle | `true` | Include moderator activity section |
-| Show Karma Stats | toggle | `false` | Enrich offenders with karma, account age, snoovatar |
-| Show Leaderboard | toggle | `true` | Show ranked mod leaderboard with workload percentages |
-| Show Inactive Alerts | toggle | `true` | Flag mods inactive beyond the threshold |
-| Inactive Threshold (days) | number | `5` | Days without action before marking mod as inactive |
-| Show Anomaly Alerts | toggle | `true` | Show anomaly/spike alerts based on 7-day rolling average |
+| Setting                   | Type   | Default | Description                                                       |
+| ------------------------- | ------ | ------- | ----------------------------------------------------------------- |
+| Report Frequency          | select | `daily` | `hourly`, `4-hourly`, `12-hourly`, `daily`, `weekly`, or `custom` |
+| Report Hour               | number | `12`    | Hour of day (0–23) for report generation                          |
+| Report Minute             | number | `0`     | Minute of hour (0–59) for report generation                       |
+| Timezone                  | select | `0`     | UTC offset (e.g. `-300` for UTC-5, `480` for UTC+8)               |
+| Custom Cron               | string | —       | 5-field cron expression when frequency is `custom`                |
+| Show Post Count           | toggle | `true`  | Include post submission count in Activity Summary                 |
+| Show Comment Count        | toggle | `true`  | Include comment count in Activity Summary                         |
+| Show Removal Count        | toggle | `true`  | Include content removal count                                     |
+| Show Approval Count       | toggle | `true`  | Include content approval count                                    |
+| Show Rule Violations      | toggle | `true`  | Include top violated rules section                                |
+| Show Repeat Offenders     | toggle | `true`  | Include repeat offenders section                                  |
+| Show Mod Activity         | toggle | `true`  | Include moderator activity section                                |
+| Show Karma Stats          | toggle | `false` | Enrich offenders with karma, account age, snoovatar               |
+| Show Leaderboard          | toggle | `true`  | Show ranked mod leaderboard with workload percentages             |
+| Show Inactive Alerts      | toggle | `true`  | Flag mods inactive beyond the threshold                           |
+| Inactive Threshold (days) | number | `5`     | Days without action before marking mod as inactive                |
+| Show Anomaly Alerts       | toggle | `true`  | Show anomaly/spike alerts based on 7-day rolling average          |
 
 ## Report Sections
 

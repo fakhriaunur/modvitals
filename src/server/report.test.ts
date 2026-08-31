@@ -77,11 +77,11 @@ function makeActiveReport(): ReportData {
       topMods: [{ username: 'mod1', count: 7 }],
     },
     trends: {
-      posts: 50,       // 50% increase
-      comments: 40,    // 40% increase
-      removals: 60,    // 60% increase
-      approvals: 67,   // 67% increase
-      reports: 200,    // 200% increase (3 vs 1)
+      posts: 50, // 50% increase
+      comments: 40, // 40% increase
+      removals: 60, // 60% increase
+      approvals: 67, // 67% increase
+      reports: 200, // 200% increase (3 vs 1)
     },
     lastReportTimestamp: '2026-05-23T12:00:00.000Z',
   };
@@ -93,16 +93,10 @@ function makeReportWithNegativeTrends(): ReportData {
     period: {
       dateKey: '20260524',
       metrics: { posts: 5, comments: 10, removals: 2, approvals: 1, reports: 0 },
-      topRules: [
-        { rule: 'No Spam', count: 2 },
-      ],
+      topRules: [{ rule: 'No Spam', count: 2 }],
       topActionTypes: [],
-      topMods: [
-        { username: 'mod1', count: 3 },
-      ],
-      topOffenders: [
-        { username: 'offender1', score: 2 },
-      ],
+      topMods: [{ username: 'mod1', count: 3 }],
+      topOffenders: [{ username: 'offender1', score: 2 }],
       offenderKarma: {},
       leaderboard: [],
     },
@@ -114,11 +108,11 @@ function makeReportWithNegativeTrends(): ReportData {
       topMods: [],
     },
     trends: {
-      posts: -75,      // 75% decrease
+      posts: -75, // 75% decrease
       comments: -75,
       removals: -80,
       approvals: -80,
-      reports: -100,   // 100% decrease (0 vs 2)
+      reports: -100, // 100% decrease (0 vs 2)
     },
     lastReportTimestamp: '2026-05-23T12:00:00.000Z',
   };
@@ -133,9 +127,7 @@ function makeReportWithKarma(): ReportData {
     period: {
       dateKey: '20260524',
       metrics: { posts: 15, comments: 42, removals: 8, approvals: 5, reports: 3 },
-      topRules: [
-        { rule: 'No Spam', count: 5 },
-      ],
+      topRules: [{ rule: 'No Spam', count: 5 }],
       topActionTypes: [],
       topMods: [],
       topOffenders: [
@@ -217,10 +209,7 @@ const emptyReport = makeEmptyReport();
 const emptyTitle = buildReportTitle(emptyReport);
 const emptyBody = formatReport(emptyReport);
 
-assert(
-  emptyTitle.includes('No Activity'),
-  'Title includes "No Activity" for empty report',
-);
+assert(emptyTitle.includes('No Activity'), 'Title includes "No Activity" for empty report');
 assertContains(
   emptyBody,
   'No activity in this period',
@@ -370,10 +359,46 @@ function makeReportWithLeaderboard(): ReportData {
     period: {
       ...base.period,
       leaderboard: [
-        { rank: 1, username: 'mod1', count: 10, pct: 50, isMostActive: true, lastActionTimestamp: new Date(Date.now() - 1 * 86400000).toISOString(), daysSinceLastAction: 1, isInactive: false },
-        { rank: 2, username: 'mod2', count: 6, pct: 30, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 3 * 86400000).toISOString(), daysSinceLastAction: 3, isInactive: false },
-        { rank: 3, username: 'mod3', count: 3, pct: 15, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 7 * 86400000).toISOString(), daysSinceLastAction: 7, isInactive: true },
-        { rank: 4, username: 'mod4', count: 1, pct: 5, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 10 * 86400000).toISOString(), daysSinceLastAction: 10, isInactive: true },
+        {
+          rank: 1,
+          username: 'mod1',
+          count: 10,
+          pct: 50,
+          isMostActive: true,
+          lastActionTimestamp: new Date(Date.now() - 1 * 86400000).toISOString(),
+          daysSinceLastAction: 1,
+          isInactive: false,
+        },
+        {
+          rank: 2,
+          username: 'mod2',
+          count: 6,
+          pct: 30,
+          isMostActive: false,
+          lastActionTimestamp: new Date(Date.now() - 3 * 86400000).toISOString(),
+          daysSinceLastAction: 3,
+          isInactive: false,
+        },
+        {
+          rank: 3,
+          username: 'mod3',
+          count: 3,
+          pct: 15,
+          isMostActive: false,
+          lastActionTimestamp: new Date(Date.now() - 7 * 86400000).toISOString(),
+          daysSinceLastAction: 7,
+          isInactive: true,
+        },
+        {
+          rank: 4,
+          username: 'mod4',
+          count: 1,
+          pct: 5,
+          isMostActive: false,
+          lastActionTimestamp: new Date(Date.now() - 10 * 86400000).toISOString(),
+          daysSinceLastAction: 10,
+          isInactive: true,
+        },
       ],
     },
   };
@@ -419,7 +444,11 @@ const settingsNoLeaderboard: ModVitalsSettings = {
   showDebugInfo: false,
 };
 const lbBodyDisabled = formatReport(lbReport, settingsNoLeaderboard);
-assertNotContains(lbBodyDisabled, 'Top Moderators (Leaderboard)', 'Leaderboard disabled: no leaderboard header');
+assertNotContains(
+  lbBodyDisabled,
+  'Top Moderators (Leaderboard)',
+  'Leaderboard disabled: no leaderboard header',
+);
 assertContains(lbBodyDisabled, 'Top Moderators', 'Leaderboard disabled: simple mod list shown');
 
 // Inactive alerts disabled
@@ -459,8 +488,26 @@ function makeReportAllInactiveZero(): ReportData {
         { username: 'mod2', count: 0 },
       ],
       leaderboard: [
-        { rank: 1, username: 'mod1', count: 0, pct: 0, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 10 * 86400000).toISOString(), daysSinceLastAction: 10, isInactive: true },
-        { rank: 2, username: 'mod2', count: 0, pct: 0, isMostActive: false, lastActionTimestamp: new Date(Date.now() - 15 * 86400000).toISOString(), daysSinceLastAction: 15, isInactive: true },
+        {
+          rank: 1,
+          username: 'mod1',
+          count: 0,
+          pct: 0,
+          isMostActive: false,
+          lastActionTimestamp: new Date(Date.now() - 10 * 86400000).toISOString(),
+          daysSinceLastAction: 10,
+          isInactive: true,
+        },
+        {
+          rank: 2,
+          username: 'mod2',
+          count: 0,
+          pct: 0,
+          isMostActive: false,
+          lastActionTimestamp: new Date(Date.now() - 15 * 86400000).toISOString(),
+          daysSinceLastAction: 15,
+          isInactive: true,
+        },
       ],
       topActionTypes: [],
     },
@@ -469,7 +516,11 @@ function makeReportAllInactiveZero(): ReportData {
 
 const allInactiveReport = makeReportAllInactiveZero();
 const allInactiveBody = formatReport(allInactiveReport);
-assertContains(allInactiveBody, 'All moderators are currently inactive', 'All inactive: special message shown');
+assertContains(
+  allInactiveBody,
+  'All moderators are currently inactive',
+  'All inactive: special message shown',
+);
 
 // ---------------------------------------------------------------------------
 // Test: Anomaly Alerts
@@ -484,13 +535,15 @@ function makeReportWithAnomalyData(anomalyData?: AnomalyData): ReportData {
 // Anomaly alerts section appears when anomalies detected
 const anomalyWithAlerts: AnomalyData = {
   hasSufficientData: true,
-  alerts: [{
-    metric: 'removals',
-    label: 'removals',
-    currentValue: 12,
-    averageValue: 4,
-    percentOfAverage: 300,
-  }],
+  alerts: [
+    {
+      metric: 'removals',
+      label: 'removals',
+      currentValue: 12,
+      averageValue: 4,
+      percentOfAverage: 300,
+    },
+  ],
   baselineDays: 7,
 };
 
@@ -506,7 +559,13 @@ const multiAlerts: AnomalyData = {
   hasSufficientData: true,
   alerts: [
     { metric: 'posts', label: 'posts', currentValue: 30, averageValue: 10, percentOfAverage: 300 },
-    { metric: 'removals', label: 'removals', currentValue: 25, averageValue: 8, percentOfAverage: 313 },
+    {
+      metric: 'removals',
+      label: 'removals',
+      currentValue: 25,
+      averageValue: 8,
+      percentOfAverage: 313,
+    },
   ],
   baselineDays: 7,
 };
@@ -522,8 +581,16 @@ const noAlertsData: AnomalyData = {
   baselineDays: 7,
 };
 const noAlertBody = formatReport(makeReportWithAnomalyData(noAlertsData));
-assertNotContains(noAlertBody, '⚠️ Anomaly Alerts', 'No alerts section when no anomalies with sufficient data');
-assertNotContains(noAlertBody, 'Anomaly Detection', 'No anomaly detection header when no anomalies');
+assertNotContains(
+  noAlertBody,
+  '⚠️ Anomaly Alerts',
+  'No alerts section when no anomalies with sufficient data',
+);
+assertNotContains(
+  noAlertBody,
+  'Anomaly Detection',
+  'No anomaly detection header when no anomalies',
+);
 
 // Collecting baseline message when insufficient data
 const insufficientData: AnomalyData = {
@@ -566,15 +633,34 @@ const settingsAnomalyDisabled: ModVitalsSettings = {
   showAnomalyAlerts: false,
   showDebugInfo: false,
 };
-const disabledBody = formatReport(makeReportWithAnomalyData(anomalyWithAlerts), settingsAnomalyDisabled);
-assertNotContains(disabledBody, 'Anomaly Alerts', 'Anomaly alerts hidden when showAnomalyAlerts disabled');
-assertNotContains(disabledBody, 'Anomaly Detection', 'Anomaly detection header hidden when disabled');
+const disabledBody = formatReport(
+  makeReportWithAnomalyData(anomalyWithAlerts),
+  settingsAnomalyDisabled,
+);
+assertNotContains(
+  disabledBody,
+  'Anomaly Alerts',
+  'Anomaly alerts hidden when showAnomalyAlerts disabled',
+);
+assertNotContains(
+  disabledBody,
+  'Anomaly Detection',
+  'Anomaly detection header hidden when disabled',
+);
 assertNotContains(disabledBody, 'Collecting baseline', 'Baseline message hidden when disabled');
 
 // Undefined anomalyData (report before feature existed) — no alerts section
 const noAnomalyFieldBody = formatReport(makeActiveReport());
-assertNotContains(noAnomalyFieldBody, 'Anomaly Alerts', 'No alerts section when anomalyData undefined');
-assertNotContains(noAnomalyFieldBody, 'Anomaly Detection', 'No anomaly detection header when undefined');
+assertNotContains(
+  noAnomalyFieldBody,
+  'Anomaly Alerts',
+  'No alerts section when anomalyData undefined',
+);
+assertNotContains(
+  noAnomalyFieldBody,
+  'Anomaly Detection',
+  'No anomaly detection header when undefined',
+);
 
 // Alerts section appears at TOP of report (before Overview)
 const alertSectionIdx = alertBody.indexOf('⚠️ Anomaly Alerts');

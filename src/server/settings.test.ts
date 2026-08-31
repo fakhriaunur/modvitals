@@ -5,7 +5,14 @@
  * and asTimezoneOffset.
  */
 
-import { shouldGenerateReport, asBoolean, asNumber, asFrequency, asTimezoneOffset, resolveEffectiveCron } from './settings.js';
+import {
+  shouldGenerateReport,
+  asBoolean,
+  asNumber,
+  asFrequency,
+  asTimezoneOffset,
+  resolveEffectiveCron,
+} from './settings.js';
 import type { ModVitalsSettings } from './settings.js';
 
 // ---------------------------------------------------------------------------
@@ -86,7 +93,10 @@ assert(weeklyWrongMin === false, 'weekly at wrong minute returns false');
 // Weekly default minute=0 — should only match when minute is 0
 const weeklyDefaultMin = shouldGenerateReport('weekly', currentHour);
 if (currentMinute === 0) {
-  assert(weeklyDefaultMin === (currentDay === 1), `weekly default minute matches when minute=0 (day ${currentDay})`);
+  assert(
+    weeklyDefaultMin === (currentDay === 1),
+    `weekly default minute matches when minute=0 (day ${currentDay})`,
+  );
 } else {
   assert(weeklyDefaultMin === false, 'weekly default minute=0 returns false when minute!=0');
 }
@@ -112,19 +122,24 @@ assert(hourlyMatch === true, 'hourly true regardless of hour');
 console.log('\n--- shouldGenerateReport: 4-hourly ---');
 
 // 4-hourly: fires at hours 0,4,8,12,16,20 at configured minute
-const fourHourlyMatch = currentHour % 4 === 0
-  ? shouldGenerateReport('4-hourly', 0, currentMinute)
-  : false;
+const fourHourlyMatch =
+  currentHour % 4 === 0 ? shouldGenerateReport('4-hourly', 0, currentMinute) : false;
 
 if (currentHour % 4 === 0) {
   assert(fourHourlyMatch === true, `4-hourly at hour ${currentHour} (divisible by 4) returns true`);
 } else {
-  assert(fourHourlyMatch === false, `4-hourly at hour ${currentHour} (not divisible by 4) returns false`);
+  assert(
+    fourHourlyMatch === false,
+    `4-hourly at hour ${currentHour} (not divisible by 4) returns false`,
+  );
 }
 
 // 4-hourly always false at wrong hour
 const fourHourlyWrong = shouldGenerateReport('4-hourly', 0, currentMinute);
-assert(fourHourlyWrong === (currentHour % 4 === 0), `4-hourly matches only when hour%4===0 (hour=${currentHour})`);
+assert(
+  fourHourlyWrong === (currentHour % 4 === 0),
+  `4-hourly matches only when hour%4===0 (hour=${currentHour})`,
+);
 
 // 4-hourly at wrong minute
 const fourHourlyWrongMin = shouldGenerateReport('4-hourly', 0, wrongMinute);
@@ -136,14 +151,18 @@ assert(fourHourlyWrongMin === false, '4-hourly at wrong minute returns false');
 console.log('\n--- shouldGenerateReport: 12-hourly ---');
 
 // 12-hourly: fires at hours 0,12 only
-const twelveHourlyMatch = (currentHour === 0 || currentHour === 12)
-  ? shouldGenerateReport('12-hourly', 0, currentMinute)
-  : false;
+const twelveHourlyMatch =
+  currentHour === 0 || currentHour === 12
+    ? shouldGenerateReport('12-hourly', 0, currentMinute)
+    : false;
 
 if (currentHour === 0 || currentHour === 12) {
   assert(twelveHourlyMatch === true, `12-hourly at hour ${currentHour} (0 or 12) returns true`);
 } else {
-  assert(twelveHourlyMatch === false, `12-hourly at hour ${currentHour} (not 0 or 12) returns false`);
+  assert(
+    twelveHourlyMatch === false,
+    `12-hourly at hour ${currentHour} (not 0 or 12) returns false`,
+  );
 }
 
 // 12-hourly at wrong minute
@@ -169,7 +188,10 @@ assert(customHourly === true, 'custom cron matches current minute with wildcard 
 // Custom with non-matching cron
 const customNonMatch = shouldGenerateReport('custom', 0, 0, '0 3 * * *');
 const is3am = currentHour === 3 && currentMinute === 0;
-assert(customNonMatch === is3am, `custom cron "0 3 * * *" matches only if hour=3 & minute=0 (now=${currentHour}:${currentMinute})`);
+assert(
+  customNonMatch === is3am,
+  `custom cron "0 3 * * *" matches only if hour=3 & minute=0 (now=${currentHour}:${currentMinute})`,
+);
 
 // Custom with invalid cron (returns false gracefully)
 const invalidCron = shouldGenerateReport('custom', 0, 0, 'not-a-cron');
@@ -204,7 +226,11 @@ assertStrictEqual(asBoolean('true', false), true, 'string "true" returns true');
 assertStrictEqual(asBoolean('false', true), false, 'string "false" returns false');
 
 // Fallback to default for unrecognized values
-assertStrictEqual(asBoolean('yes', false), false, 'unrecognized string falls back to default false');
+assertStrictEqual(
+  asBoolean('yes', false),
+  false,
+  'unrecognized string falls back to default false',
+);
 assertStrictEqual(asBoolean('yes', true), true, 'unrecognized string falls back to default true');
 assertStrictEqual(asBoolean(null, true), true, 'null falls back to default');
 assertStrictEqual(asBoolean(undefined, false), false, 'undefined falls back to default');
@@ -291,7 +317,11 @@ assertStrictEqual(asTimezoneOffset(null, 0), 0, 'null falls back to default');
 assertStrictEqual(asTimezoneOffset(undefined, 0), 0, 'undefined falls back to default');
 assertStrictEqual(asTimezoneOffset('abc', 0), 0, 'invalid string falls back to default');
 assertStrictEqual(asTimezoneOffset(true, 0), 0, 'boolean falls back to default');
-assertStrictEqual(asTimezoneOffset('invalid', -300), -300, 'invalid string falls back to custom default');
+assertStrictEqual(
+  asTimezoneOffset('invalid', -300),
+  -300,
+  'invalid string falls back to custom default',
+);
 
 // ---------------------------------------------------------------------------
 // resolveEffectiveCron
@@ -342,14 +372,24 @@ assertStrictEqual(
 
 // daily
 assertStrictEqual(
-  resolveEffectiveCron({ ...baseSettings, reportFrequency: 'daily', reportHour: 8, reportMinute: 30 }),
+  resolveEffectiveCron({
+    ...baseSettings,
+    reportFrequency: 'daily',
+    reportHour: 8,
+    reportMinute: 30,
+  }),
   '30 8 * * *',
   'daily resolves to minute hour * * *',
 );
 
 // weekly
 assertStrictEqual(
-  resolveEffectiveCron({ ...baseSettings, reportFrequency: 'weekly', reportHour: 0, reportMinute: 0 }),
+  resolveEffectiveCron({
+    ...baseSettings,
+    reportFrequency: 'weekly',
+    reportHour: 0,
+    reportMinute: 0,
+  }),
   '0 0 * * 1',
   'weekly resolves to minute hour * * 1',
 );

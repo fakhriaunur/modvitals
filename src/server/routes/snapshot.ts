@@ -48,7 +48,7 @@ export default function registerSnapshot(app: Hono): void {
       const report = await generateReport(
         modSettings.inactiveThresholdDays,
         undefined, // no lastReportTimestampOverride
-        true,      // skipTimestampUpdate — critical: don't modify lastReport
+        true, // skipTimestampUpdate — critical: don't modify lastReport
       );
 
       console.log('[snapshot:generate] aggregation complete', {

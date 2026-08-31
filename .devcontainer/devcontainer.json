@@ -1,0 +1,44 @@
+{
+  "name": "ModVitals",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "GitHub.copilot",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true
+      }
+    }
+  },
+  "postCreateCommand": "npm install",
+  "postStartCommand": "npm run type-check",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Devvit Hono Server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "customizationsCodespaces": {
+    "openFiles": ["README.md", "AGENTS.md"]
+  }
+}
