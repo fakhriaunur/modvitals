@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# mise file-task: build-timed
+# description: Timed build → dist/build-metrics.json (build_performance_tracking)
+# sources: ["src/**", "vite.config.ts"]
+# outputs: ["dist/build-metrics.json"]
+set -euo pipefail
+exec node scripts/build-timed.mjs "$@"

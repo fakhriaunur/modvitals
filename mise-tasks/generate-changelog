@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# mise file-task: generate-changelog
+# description: conventional commits → CHANGELOG.md
+set -euo pipefail
+exec node scripts/generate-changelog.mjs "$@"

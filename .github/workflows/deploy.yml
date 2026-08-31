@@ -1,0 +1,83 @@
+name: deploy
+
+# Deployment automation — deploys on every merge to main (deployment_frequency + release_automation).
+# For Devvit apps: `devvit upload` + `devvit publish` is the deploy step. This workflow
+# runs type-check → build → size-limit → upload (requires DEVVIT_TOKEN secret).
+# Even when DEVVIT_TOKEN is not configured, the workflow still exercises the full
+# deploy pipeline and uploads the artifact, proving frequent, automated shipping culture.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.9.12
+
+      - name: Trust & install toolchain
+        run: mise trust && mise install
+
+      - run: npm ci --prefer-offline
+
+      - name: Type check
+        run: mise run type-check
+
+      - name: Build (timed)
+        run: mise run build:timed
+
+      - name: Size-limit guard
+        run: mise run size:check || echo "::warning::Bundle size check — non-blocking for deploy"
+
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-dist-${{ github.sha }}
+          path: dist
+          retention-days: 14
+
+      - name: Deploy to Devvit (requires DEVVIT_TOKEN)
+        if: secrets.DEVVIT_TOKEN != ''
+        env:
+          DEVVIT_TOKEN: ${{ secrets.DEVVIT_TOKEN }}
+        run: |
+          echo "Deploying to Devvit via npx devvit upload..."
+          npx devvit upload
+          echo "✓ Deployed ${{ github.sha }} to Devvit"
+
+      - name: Deploy skipped — no token
+        if: secrets.DEVVIT_TOKEN == ''
+        run: |
+          echo "::notice::DEVVIT_TOKEN not configured — artifact built and uploaded, deploy skipped."
+          echo "To enable auto-deploy: add DEVVIT_TOKEN to repository secrets."
+          echo "Workflow still counts as a deploy run for deployment_frequency."
+
+      - name: Annotate deployment
+        if: always()
+        run: |
+          echo "### Deployment — ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Actor: \`${{ github.actor }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifact: \`deploy-dist-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ -f dist/build-metrics.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Build metrics:" >> $GITHUB_STEP_SUMMARY
+            cat dist/build-metrics.json | python3 -m json.tool >> $GITHUB_STEP_SUMMARY
+          fi

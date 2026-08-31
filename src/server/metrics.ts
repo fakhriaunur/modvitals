@@ -310,7 +310,7 @@ export async function updateLastReportTimestamp(): Promise<void> {
  */
 export async function trackModActionTimestamp(modUsername: string): Promise<void> {
   try {
-    await redis.hSet(KEY.modLastAction, modUsername, new Date().toISOString());
+    await redis.hSet(KEY.modLastAction, { [modUsername]: new Date().toISOString() });
   } catch (error) {
     console.error('[metrics] failed to trackModActionTimestamp', { modUsername, error });
   }
@@ -358,7 +358,7 @@ export async function storeKarmaSnapshot(
   commentKarma: number,
 ): Promise<void> {
   try {
-    await redis.hSet(KEY.karma(dateKey), username, `${linkKarma}|${commentKarma}`);
+    await redis.hSet(KEY.karma(dateKey), { [username]: `${linkKarma}|${commentKarma}` });
   } catch (error) {
     console.error('[metrics] failed to storeKarmaSnapshot', { dateKey, username, error });
   }

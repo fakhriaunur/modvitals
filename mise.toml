@@ -1,0 +1,121 @@
+# mise.toml — ModVitals unified toolchain & task runner
+# Preset: 1A (node 22.22.2 pinned — vite 8 requires >=22.12) + 2A (npm) + 3B (hybrid TOML + file tasks) + 4A (thin shims)
+# Docs: https://mise.jdx.dev/tasks/toml-tasks.html | https://mise.jdx.dev/tasks/task-configuration.html
+
+[tools]
+node = "22.22.2"
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
+
+[env]
+ANALYZE = "0"
+
+# ── Build ──────────────────────────────────────────────────────────
+[tasks.build]
+description = "Vite: bundle client + server → dist/"
+run = "npx vite build"
+sources = ["src/**", "vite.config.ts", "package.json", "package-lock.json"]
+outputs = ["dist/**", "!dist/**/*.map"]
+
+[tasks."build:analyze"]
+description = "Bundle treemap → dist/stats.html (heavy_dependency_detection)"
+env = { ANALYZE = "1" }
+run = "npx vite build"
+
+[tasks."build:timed"]
+description = "Timed build → dist/build-metrics.json (build_performance_tracking)"
+run = "node scripts/build-timed.mjs"
+sources = ["src/**", "vite.config.ts"]
+outputs = ["dist/build-metrics.json"]
+
+# ── Type / Lint / Format ──────────────────────────────────────────
+[tasks."type-check"]
+description = "tsc --build (strict)"
+run = "npx tsc --build"
+
+[tasks.lint]
+description = "eslint . (max-warnings 0)"
+run = "npx eslint . --max-warnings 0"
+
+[tasks."lint:fix"]
+description = "eslint --fix"
+run = "npx eslint . --fix"
+
+[tasks.format]
+description = "prettier --write"
+run = 'npx prettier --write "src/**/*.{ts,js,json}" "*.{js,json,md}"'
+
+[tasks."format:check"]
+description = "prettier --check (CI)"
+run = 'npx prettier --check "src/**/*.{ts,js,json}" "*.{js,json,md}"'
+
+[tasks.knip]
+description = "dead-code detection"
+run = "npx knip --no-progress || echo '::warning:: knip found warnings — see report'"
+
+[tasks."knip:check"]
+description = "knip --no-progress (CI alias)"
+run = "npx knip --no-progress || echo '::warning:: knip found warnings — see report'"
+
+[tasks.jscpd]
+description = "duplicate-code detection (threshold 5%)"
+run = "npx jscpd src --config .jscpd.json"
+
+[tasks.size]
+description = "size-limit (heavy_dependency_detection, 3 MB server bundle)"
+run = "npx size-limit"
+
+[tasks."size:check"]
+description = "size-limit --json"
+run = "npx size-limit --json"
+
+# ── Test ───────────────────────────────────────────────────────────
+[tasks.test]
+description = "Run 7 suites via tsx (~452 assertions)"
+run = "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts && npx tsx src/server/cron-matcher.test.ts && npx tsx src/server/feature-flags.test.ts"
+
+[tasks."test:timed"]
+description = "Per-suite timing"
+run = "node scripts/test-timed.mjs"
+sources = ["src/**"]
+
+# ── Quality / Docs / Release ──────────────────────────────────────
+[tasks.quality]
+description = "Local quality gate: lint + format:check + knip:check + jscpd"
+depends = ["lint", "format:check", "knip:check", "jscpd"]
+
+[tasks.docs]
+description = "TypeDoc → docs/api/"
+run = "npx typedoc"
+
+[tasks."docs:generate"]
+description = "TypeDoc alias"
+run = "npx typedoc"
+
+[tasks."release:changelog"]
+description = "conventional commits → CHANGELOG.md"
+run = "node scripts/generate-changelog.mjs"
+
+# ── Devvit ─────────────────────────────────────────────────────────
+[tasks.dev]
+description = "devvit playtest (hot reload + tunnel)"
+run = "npx devvit playtest"
+
+[tasks.deploy]
+description = "type-check && devvit upload"
+depends = ["type-check"]
+run = "npx devvit upload"
+
+[tasks.launch]
+description = "deploy && devvit publish"
+run = "mise run deploy && npx devvit publish"
+
+[tasks.login]
+description = "devvit login (OAuth)"
+run = "npx devvit login"
+
+# ── CI aggregate ───────────────────────────────────────────────────
+[tasks.ci]
+description = "CI parity: type-check → build:timed → test:timed"
+depends = ["type-check", "build:timed", "test:timed"]

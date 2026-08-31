@@ -1,0 +1,97 @@
+name: release
+
+# Release automation — changelog + GitHub Release + release-please.
+# Satisfies release_notes_automation + release_automation.
+# - On push to main: release-please opens/updates a release PR (conventional commits → changelog).
+# - On workflow_dispatch or after deploy: generates CHANGELOG.md and creates a GitHub Release.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Release Please" >> $GITHUB_STEP_SUMMARY
+          echo "- release_created: \`${{ steps.release.outputs.release_created }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- tag_name: \`${{ steps.release.outputs.tag_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- pr: \`${{ steps.release.outputs.pr }}\`" >> $GITHUB_STEP_SUMMARY
+
+  changelog:
+    name: changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.9.12
+
+      - run: mise trust && mise install
+
+      - run: npm ci --prefer-offline
+
+      - name: Generate CHANGELOG.md
+        run: mise run release:changelog
+
+      - name: Upload changelog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: CHANGELOG.md
+          if-no-files-found: error
+
+  github-release:
+    name: github-release (fallback)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch'
+    needs: [changelog]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.9.12
+
+      - run: mise trust && mise install
+
+      - run: npm ci --prefer-offline
+
+      - run: mise run release:changelog
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — skipping"
+            exit 0
+          fi
+          gh release create "$TAG" --generate-notes --title "ModVitals $TAG" --notes-file <(head -n 120 CHANGELOG.md)
+          echo "✓ Created release $TAG"

@@ -12,6 +12,7 @@ import {
 } from '../metrics.js';
 import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
 import { getRelativeDateKey } from '../date-utils.js';
+import { isFeatureEnabled } from '../feature-flags.js';
 
 // ---------------------------------------------------------------------------
 // Route registration
@@ -103,8 +104,10 @@ export default function registerScheduler(app: Hono): void {
         previousPeriodExists: report.previousPeriod.exists,
       });
 
-      // Enrich repeat offenders with karma data if enabled
-      if (modSettings.showKarmaStats && report.period.topOffenders.length > 0) {
+      // Enrich repeat offenders with karma data — gated by feature flag + setting
+      // Flag system: LaunchDarkly/Statsig/Unleash/GrowthBook parity via custom flags
+      const karmaFlag = await isFeatureEnabled('enhancedKarma');
+      if (karmaFlag && modSettings.showKarmaStats && report.period.topOffenders.length > 0) {
         const usernames = report.period.topOffenders.map((o) => o.username);
         const karmaMap = await fetchUsersKarma(usernames);
 
@@ -126,8 +129,11 @@ export default function registerScheduler(app: Hono): void {
       const currentMetrics = report.period.metrics;
       await storeDailySnapshot(report.period.dateKey, currentMetrics);
 
-      // Compute anomaly alerts from 7-day rolling average if enabled
-      if (modSettings.showAnomalyAlerts) {
+      // Compute anomaly alerts from 7-day rolling average — gated by flag + setting
+      // Gradual rollout via anomalyV2Rollout (0-100) for safe rollout
+      const anomalyFlag = await isFeatureEnabled('anomalyV2');
+      const anomalyRollout = await isFeatureEnabled('anomalyV2Rollout');
+      if (anomalyFlag && anomalyRollout && modSettings.showAnomalyAlerts) {
         // Generate date keys for the previous 7 days (excluding today)
         const dateKeys: string[] = [];
         for (let i = 1; i <= 7; i++) {

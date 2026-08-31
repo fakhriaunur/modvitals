@@ -98,4 +98,16 @@ export default tseslint.config(
       'no-warning-comments': 'off',
     },
   },
+  {
+    files: ['scripts/**/*.mjs', '*.config.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off',
+    },
+  },
 );

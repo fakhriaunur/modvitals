@@ -84,15 +84,15 @@ export async function handleModAction(body: OnModActionRequest): Promise<void> {
   // Track per-mod action count (all actions)
   await trackModAction(moderator, action);
 
-  // Action-specific tracking using Sets
-  if (REMOVAL_ACTIONS.has(action as string)) {
+  // Action-specific tracking using Sets (cast to Set<string> for string comparison)
+  if ((REMOVAL_ACTIONS as Set<string>).has(action)) {
     await incrementRemovalCount();
 
     // Track repeat offenders when content is removed
     if (targetUser) {
       await incrementOffenderScore(targetUser);
     }
-  } else if (APPROVAL_ACTIONS.has(action as string)) {
+  } else if ((APPROVAL_ACTIONS as Set<string>).has(action)) {
     await incrementApprovalCount();
   }
   // Other actions (banuser, warnuser, muteuser, etc.) are tracked

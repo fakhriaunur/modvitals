@@ -1,0 +1,19 @@
+{
+  "ignores": [
+    "@devvit/*",
+    "@eslint/js",
+    "@size-limit/preset-small-lib",
+    "depcheck",
+    "devvit",
+    "hono",
+    "@hono/node-server",
+    "rollup-plugin-visualizer",
+    "size-limit",
+    "typescript-eslint",
+    "vite"
+  ],
+  "ignorePatterns": ["dist", "node_modules", "docs/api", "coverage"],
+  "parsers": {
+    "*.ts": "typescript"
+  }
+}

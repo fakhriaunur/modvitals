@@ -92,7 +92,8 @@ ModVitals fills this gap. It watches moderation events in real time, aggregates 
 
 ## Prerequisites
 
-- **Node.js** >= 22.2.0
+- **Node.js** `22.22.2` (pinned via `mise.toml` `[tools] node = "22.22.2"`; also `engines >=22.2.0`, vite 8 requires `>=22.12`)
+- **Task runner (canonical):** `mise` — `mise trust && mise install` installs Node; `mise run <task>` (shims: `npm run` still works via `mise run`)
 - **Devvit CLI** — install via `npm install -g devvit`
 - **Reddit Developer Account** — register at [developers.reddit.com](https://developers.reddit.com)
 - **A Subreddit** where you have mod permissions
@@ -191,21 +192,60 @@ When fewer than 7 days of data exist, a baseline-collection message is shown ins
 ## Development
 
 ```bash
-# Install dependencies
+# Install toolchain + deps (mise path — canonical)
+mise trust && mise install   # node 22.22.2 via mise.toml
+npm install                  # or npm ci in CI
+
+# Or without mise (shims still work)
 npm install
 
 # Build the project (server + client)
-npm run build
+mise run build        # or npm run build (shim)
+# Build with bundle analysis (visualizer → dist/stats.html)
+mise run build:analyze
+# Build with performance metrics (→ dist/build-metrics.json)
+mise run build:timed
 
 # Type-check only
-npm run type-check
+mise run type-check
+
+# Lint / format / quality (see AGENTS.md)
+mise run quality      # or: mise run lint && mise run format:check && mise run knip:check && mise run jscpd
+mise tasks ls         # list all tasks from mise.toml + mise-tasks/*
+
+# Tests (7 suites, ~452 assertions) — with timing
+mise run test
+mise run test:timed
 
 # Run local development server with hot reload
-npm run dev
+mise run dev          # or npm run dev
 
 # Upload for playtesting on a test subreddit
 npx devvit playtest
+mise run deploy       # type-check && devvit upload
+mise run launch       # deploy && devvit publish
+
+# Changelog (conventional commits → CHANGELOG.md)
+mise run release:changelog
 ```
+
+Toolchain & tasks are unified in `mise.toml` (`[tools] node = "22.22.2"` + `[tasks.*]` + `mise-tasks/*` file-tasks). `package.json` scripts are thin `mise run <task>` shims (4A) so both `npm run build` and `mise run build` work — `mise` is canonical. See `AGENTS.md` § Toolchain & Task Runner.
+
+### CI / CD & Automation
+
+| Signal                 | Tooling                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Fast CI (<10 min)**  | `.github/workflows/ci.yml` — `build-and-test` (`jdx/mise-action@v2` + `mise trust && mise install` + `actions/cache` Vite `.vite`/`dist`, `concurrency: cancel-in-progress`, 10 min timeout). Separate `knip` + `size` jobs run in parallel.                                                                                                                                                                                                           |
+| **Build performance**  | `scripts/build-timed.mjs` (also `mise run build:timed` + file-task `mise-tasks/build-timed`) + `dist/build-metrics.json` (durationMs, artifact sizes), `vite.config.ts` `reportCompressedSize` + `chunkSizeWarningLimit: 500`, plus cache in `ci.yml`. Summary posted to GitHub Step Summary.                                                                                                                                                          |
+| **Deploy frequency**   | `.github/workflows/deploy.yml` — auto-deploys on push to `main` (`jdx/mise-action` + `mise run build:timed` → `mise run size:check` → `devvit upload` when `DEVVIT_TOKEN` present, otherwise artifact upload). `concurrency` per-ref, `environment: production`, counts toward `gh run list --workflow=deploy.yml`.                                                                                                                                    |
+| **Feature flags**      | `src/server/feature-flags.ts` — custom flag system (parity with LaunchDarkly / Statsig / Unleash / GrowthBook) with 6 flags (`enhancedKarma`, `anomalyV2`, `anomalyV2Rollout` 0-100, `leaderboardV2`, `debugModeEnhanced`, `snapshotEnabled`), Redis `flags:<key>` overrides, deterministic `hash(subredditId) % 100` rollout, `isFeatureEnabled()` / `setFlagOverride()` / `listFlags()`. Integrated in `routes/scheduler.ts` & `routes/snapshot.ts`. |
+| **Release notes**      | `.github/workflows/release.yml` + `release-please` + `scripts/generate-changelog.mjs` (also `mise run release:changelog` + file-task `mise-tasks/generate-changelog` → groups conventional commits into Features/Fixes/Refactors/Chores/Docs → `CHANGELOG.md`). Triggered on push to `main` and `workflow_dispatch`.                                                                                                                                   |
+| **Heavy deps**         | `rollup-plugin-visualizer` in `vite.config.ts` (`ANALYZE=1` → `dist/stats.html` treemap with gzip/brotli, also `mise run build:analyze`), `size-limit` in `package.json` (`dist/server/index.cjs` limit 3 MB) + `ci.yml` `size` job, `@size-limit/preset-small-lib` for import-cost checks.                                                                                                                                                            |
+| **Unused deps**        | `knip.json` (entry `src/server/index.ts`, project `src/**/*.ts`) + `.depcheckrc` + `ci.yml` `knip` job (`mise run knip:check` + `npx depcheck --config .depcheckrc`), Husky pre-commit guard.                                                                                                                                                                                                                                                          |
+| **Release automation** | `release-please` (`.release-please-manifest.json` + `release-please-config.json`) — conventional-commits → version bump → `CHANGELOG.md` → GitHub Release PR. `release.yml` also creates GitHub Releases via `gh release create` on dispatch.                                                                                                                                                                                                          |
+| **PR review**          | `.github/workflows/pr-review.yml` — runs on `pull_request` (opened/synchronize), collects type-check/lint/test/knip/build signals via `mise run`, posts/updates a single review comment via `actions/github-script` (table + collapsible logs, marker `<!-- automated-pr-review:modvitals -->`).                                                                                                                                                       |
+
+See `AGENTS.md` and `.github/workflows/` for the authoritative config. To enable live deploys, add `DEVVIT_TOKEN` as a repository secret.
 
 ### Viewing Logs
 

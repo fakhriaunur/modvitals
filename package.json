@@ -5,26 +5,33 @@
   "license": "BSD-3-Clause",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "deploy": "npm run type-check && devvit upload",
-    "dev": "devvit playtest",
-    "launch": "npm run deploy && devvit publish",
-    "login": "devvit login",
-    "test": "npx tsx src/server/report.test.ts && npx tsx src/server/scheduler-logic.test.ts && npx tsx src/server/settings.test.ts && npx tsx src/server/date-utils.test.ts && npx tsx src/server/karma.test.ts && npx tsx src/server/cron-matcher.test.ts",
-    "type-check": "tsc --build",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "lint:check": "eslint . --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,js,json}\" \"*.{js,json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,js,json}\" \"*.{js,json,md}\"",
-    "knip": "knip",
-    "knip:check": "knip --no-progress",
-    "jscpd": "jscpd src --config .jscpd.json",
-    "quality": "npm run lint && npm run format:check && npm run knip:check && npm run jscpd",
+    "build": "mise run build",
+    "build:analyze": "mise run build:analyze",
+    "build:timed": "mise run build:timed",
+    "deploy": "mise run deploy",
+    "dev": "mise run dev",
+    "launch": "mise run launch",
+    "login": "mise run login",
+    "test": "mise run test",
+    "test:timed": "mise run test:timed",
+    "type-check": "mise run type-check",
+    "lint": "mise run lint",
+    "lint:fix": "mise run lint:fix",
+    "lint:check": "mise run lint",
+    "format": "mise run format",
+    "format:check": "mise run format:check",
+    "knip": "mise run knip",
+    "knip:check": "mise run knip:check",
+    "jscpd": "mise run jscpd",
+    "quality": "mise run quality",
+    "size": "mise run size",
+    "size:check": "mise run size:check",
     "prepare": "husky",
-    "docs": "typedoc",
-    "docs:generate": "typedoc"
+    "docs": "mise run docs",
+    "docs:generate": "mise run docs:generate",
+    "release:changelog": "mise run release:changelog"
   },
+  "packageManager": "npm@10.9.7",
   "engines": {
     "node": ">=22.2.0"
   },
@@ -37,11 +44,15 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",
+    "@size-limit/preset-small-lib": "^11.1.0",
     "@types/node": "^22.19.19",
+    "depcheck": "^1.4.7",
     "eslint": "^9.12.0",
     "jscpd": "^4.0.5",
     "knip": "^5.27.1",
     "prettier": "^3.3.3",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "size-limit": "^11.1.0",
     "tsx": "^4.22.3",
     "typedoc": "^0.28.13",
     "typescript": "6.0.3",
@@ -58,5 +69,12 @@
     "*.{js,json,md}": [
       "prettier --write --ignore-unknown"
     ]
-  }
+  },
+  "size-limit": [
+    {
+      "name": "server bundle",
+      "path": "dist/server/index.cjs",
+      "limit": "3 MB"
+    }
+  ]
 }

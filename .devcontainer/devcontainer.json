@@ -4,6 +4,9 @@
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {
       "version": "latest"
+    },
+    "ghcr.io/jdx/mise:1": {
+      "version": "latest"
     }
   },
   "customizations": {
@@ -27,8 +30,8 @@
       }
     }
   },
-  "postCreateCommand": "npm install",
-  "postStartCommand": "npm run type-check",
+  "postCreateCommand": "mise trust && mise install && npm install",
+  "postStartCommand": "mise run type-check",
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {

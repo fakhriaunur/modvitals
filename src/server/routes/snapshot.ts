@@ -7,6 +7,7 @@ import { getSettings } from '../settings.js';
 import { getMultipleSnapshots } from '../metrics.js';
 import { fetchUsersKarma, storeOffenderKarmaSnapshots } from '../karma.js';
 import { getRelativeDateKey } from '../date-utils.js';
+import { isFeatureEnabled } from '../feature-flags.js';
 
 // ---------------------------------------------------------------------------
 // Route registration — snapshot (on-demand menu action)
@@ -29,11 +30,12 @@ import { getRelativeDateKey } from '../date-utils.js';
 export default function registerSnapshot(app: Hono): void {
   app.post('/internal/menu/generate-snapshot', async (c) => {
     const body = await c.req.json<MenuItemRequest>();
+    const bodyAny = body as unknown as Record<string, unknown>;
 
     console.log('[snapshot:generate] invoked via menu action', {
-      userId: body.userId,
-      userName: body.userName,
-      subreddit: body.subreddit,
+      userId: bodyAny.userId,
+      userName: bodyAny.userName,
+      subreddit: bodyAny.subreddit,
     });
 
     try {
@@ -63,8 +65,9 @@ export default function registerSnapshot(app: Hono): void {
         previousPeriodExists: report.previousPeriod.exists,
       });
 
-      // Enrich repeat offenders with karma data if enabled
-      if (modSettings.showKarmaStats && report.period.topOffenders.length > 0) {
+      // Enrich repeat offenders — gated by flag + setting
+      const karmaFlag = await isFeatureEnabled('enhancedKarma');
+      if (karmaFlag && modSettings.showKarmaStats && report.period.topOffenders.length > 0) {
         const usernames = report.period.topOffenders.map((o) => o.username);
         const karmaMap = await fetchUsersKarma(usernames);
 
@@ -82,8 +85,9 @@ export default function registerSnapshot(app: Hono): void {
 
       // NOTE: Do NOT store daily snapshot — avoids polluting anomaly baseline
 
-      // Compute anomaly alerts from 7-day rolling average if enabled
-      if (modSettings.showAnomalyAlerts) {
+      // Compute anomaly alerts — gated by flag + setting
+      const anomalyFlag = await isFeatureEnabled('anomalyV2');
+      if (anomalyFlag && modSettings.showAnomalyAlerts) {
         // Generate date keys for the previous 7 days (excluding today)
         const dateKeys: string[] = [];
         for (let i = 1; i <= 7; i++) {

@@ -16,61 +16,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version: '22'
-          cache: npm
+          version: 2025.9.12
+      - run: mise trust && mise install
       - run: npm ci
-      - run: npm run lint -- --max-warnings 0
+      - run: mise run lint
 
   format:
     name: format (prettier)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version: '22'
-          cache: npm
+          version: 2025.9.12
+      - run: mise trust && mise install
       - run: npm ci
-      - run: npm run format:check
+      - run: mise run format:check
 
   dead-code:
     name: dead-code (knip)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version: '22'
-          cache: npm
+          version: 2025.9.12
+      - run: mise trust && mise install
       - run: npm ci
-      - run: npm run knip:check
+      - run: mise run knip:check
 
   duplicate-code:
     name: duplicate-code (jscpd)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version: '22'
-          cache: npm
+          version: 2025.9.12
+      - run: mise trust && mise install
       - run: npm ci
-      - run: npm run jscpd
+      - run: mise run jscpd
 
   complexity:
     name: complexity gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version: '22'
-          cache: npm
+          version: 2025.9.12
+      - run: mise trust && mise install
       - run: npm ci
       # complexity + max-lines are enforced via eslint.config.js; re-running lint surfaces them
-      - run: npm run lint -- --max-warnings 0
+      - run: mise run lint
 
   large-file:
     name: large-file guard
@@ -98,10 +98,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version: '22'
-          cache: npm
+          version: 2025.9.12
+      - run: mise trust && mise install
       - run: npm ci
       - name: Scan for TODO/FIXME without ticket
         run: |
@@ -118,4 +118,4 @@ jobs:
             echo "✓ No bare TODO/FIXME found"
           fi
           # eslint also enforces no-warning-comments as warn; lint step covers it
-          npm run lint
+          mise run lint

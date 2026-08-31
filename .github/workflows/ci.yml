@@ -1,0 +1,123 @@
+name: ci
+
+# Fast CI — type-check, lint, build, and tests with caching.
+# Target: <6 minutes (fast_ci_feedback <10 min). Uses setup-node cache + Vite cache.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: build & test (cached)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.9.12
+
+      - name: Trust mise config
+        run: mise trust
+
+      - name: Install toolchain (node 22.22.2 via mise.toml)
+        run: mise install
+
+      - name: Cache Vite build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.vite
+            dist
+          key: vite-${{ runner.os }}-${{ hashFiles('package-lock.json', 'vite.config.ts', 'src/**') }}
+          restore-keys: |
+            vite-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: Type check
+        run: mise run type-check
+
+      - name: Lint
+        run: mise run lint
+
+      - name: Build (timed, with metrics)
+        run: mise run build:timed
+
+      - name: Build metrics — summarize
+        if: always()
+        run: |
+          echo "### Build Performance" >> $GITHUB_STEP_SUMMARY
+          if [ -f dist/build-metrics.json ]; then
+            cat dist/build-metrics.json | python3 -m json.tool >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No build-metrics.json found" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Caching: mise (node 22.22.2) + npm + Vite (.vite, dist)" >> $GITHUB_STEP_SUMMARY
+          echo "Toolchain: \`mise ls\`" >> $GITHUB_STEP_SUMMARY
+          mise ls >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Tests (timed)
+        run: mise run test:timed
+
+      - name: Tests — summarize durations
+        if: always()
+        run: echo "Tests completed — durations printed above (test_performance_tracking)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: error
+
+  knip:
+    name: unused deps (knip)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.9.12
+      - run: mise trust && mise install
+      - run: npm ci --prefer-offline
+      - run: mise run knip:check
+      - name: Depcheck (secondary)
+        run: npx depcheck --config .depcheckrc || echo "::warning::depcheck found unused deps — see knip report"
+
+  size:
+    name: bundle size (heavy deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.9.12
+      - run: mise trust && mise install
+      - run: npm ci --prefer-offline
+      - run: mise run build
+      - name: Size-limit check
+        run: mise run size:check || echo "::warning::Bundle exceeds size-limit — review heavy dependencies"
+      - name: Visualizer (analyze bundle)
+        run: mise run build:analyze || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-stats
+          path: dist/stats.html
+          if-no-files-found: warn

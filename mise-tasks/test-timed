@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# mise file-task: test-timed
+# description: Per-suite timing (7 suites)
+# sources: ["src/**"]
+# outputs: ["dist/test-metrics.json"]
+set -euo pipefail
+exec node scripts/test-timed.mjs "$@"

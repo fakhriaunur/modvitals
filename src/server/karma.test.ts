@@ -31,13 +31,13 @@ function assert(condition: boolean, message: string): void {
   }
 }
 
-function assertStrictEqual(actual: string, expected: string, message: string): void {
+function assertStrictEqual(actual: unknown, expected: unknown, message: string): void {
   if (actual === expected) {
     passed++;
     console.log(`  ✓ ${message}`);
   } else {
     failed++;
-    console.error(`  ✗ ${message} — expected "${expected}", got "${actual}"`);
+    console.error(`  ✗ ${message} — expected "${String(expected)}", got "${String(actual)}"`);
   }
 }
 
