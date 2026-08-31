@@ -53,7 +53,7 @@ jobs:
           retention-days: 14
 
       - name: Deploy to Devvit (requires DEVVIT_TOKEN)
-        if: secrets.DEVVIT_TOKEN != ''
+        if: ${{ secrets.DEVVIT_TOKEN != '' }}
         env:
           DEVVIT_TOKEN: ${{ secrets.DEVVIT_TOKEN }}
         run: |
@@ -62,7 +62,7 @@ jobs:
           echo "✓ Deployed ${{ github.sha }} to Devvit"
 
       - name: Deploy skipped — no token
-        if: secrets.DEVVIT_TOKEN == ''
+        if: ${{ secrets.DEVVIT_TOKEN == '' }}
         run: |
           echo "::notice::DEVVIT_TOKEN not configured — artifact built and uploaded, deploy skipped."
           echo "To enable auto-deploy: add DEVVIT_TOKEN to repository secrets."
