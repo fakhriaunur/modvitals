@@ -59,15 +59,16 @@ Build output: `dist/client/` (inline HTML entry) and `dist/server/index.cjs` (Ho
 
 ## Test
 
-Tests are plain TypeScript executed via `tsx` (no Jest/Vitest runner needed).
+Tests are TypeScript executed via `tsx` + `Vitest` (see `mise.toml:tasks.test`, `vitest.config.ts`, `playwright.config.ts`).
 
 ```bash
-mise run test        # or npm test (shim): runs all 7 suites sequentially
+mise run test        # or npm test (shim): runs suites (see mise.toml / vitest.config.ts for current count)
 mise run test:timed  # per-suite timing
-npx tsx src/server/report.test.ts  # single suite
+npx tsx src/server/report.test.ts  # single suite (tsx)
+npx --no-install vitest list       # non-executing discovery (Vitest)
 ```
 
-- Suite count: 7 files, ~452 assertions
+- Suites: colocated `*.test.ts` in `src/server/` + `e2e/` (count via `mise tasks ls` / `vitest list`, do not hardcode)
 - Naming: `*.test.ts` colocated with source in `src/server/`
 - No watch mode in CI; add `--watch` manually for local iteration
 - Via mise: `mise tasks ls` shows `test`, `test:timed`, `quality`, `ci`
@@ -192,7 +193,7 @@ mise tasks ls          # list 18 tasks
 mise run build         # or npm run build (shim → mise run build) — 4A thin shims
 mise run ci            # type-check + build:timed + test:timed
 mise run quality       # lint + format:check + knip:check + jscpd
-mise run test          # 7 suites, 452 assertions
+mise run test          # suites via tsx + Vitest (see Test section)
 mise tasks deps ci     # dependency graph
 ```
 
@@ -244,6 +245,116 @@ Config: `typedoc.json`. CI workflow `.github/workflows/docs.yml` (`jdx/mise-acti
 ## Skills
 
 Agent skill at `.factory/skills/modvitals/SKILL.md` (and copied to `.claude/skills/` for Claude Code) documents full Devvit patterns; load it when scaffolding new routes or report sections.
+
+## Agent Readiness Report (Post /readiness-report)
+
+### Store and Summarize
+
+After completing the readiness evaluation — repository scan, app discovery, full criteria evaluation per `store_agent_readiness_report` schema, and validation — persist the results.
+
+- Collect git metadata at call time (PowerShell-compatible):
+
+  ```powershell
+  git rev-parse --abbrev-ref HEAD   # branch
+  git rev-parse HEAD                # commitHash
+  git status --porcelain            # hasLocalChanges = non-empty output
+  git rev-list '@{u}..HEAD' --count 2>$null; if ($LASTEXITCODE -ne 0) { echo 0 } # hasNonRemoteCommits = >0 (handle no-upstream gracefully)
+  ```
+
+- Call `store_agent_readiness_report` exactly once per evaluation:
+
+  ```json
+  {
+    "repoUrl": "https://github.com/fakhriaunur/modvitals.git",
+    "report": {
+      "<all required criteria keys per store_agent_readiness_report schema>": {
+        "numerator": 0,
+        "denominator": 1,
+        "rationale": "<=500 chars"
+      }
+    },
+    "apps": {
+      ".": {
+        "description": "Single Devvit moderation health-report app (Hono/TS + Redis + scheduler)"
+      }
+    },
+    "branch": "<from git rev-parse --abbrev-ref HEAD>",
+    "commitHash": "<from git rev-parse HEAD>",
+    "hasLocalChanges": true,
+    "hasNonRemoteCommits": false,
+    "modelUsed": {
+      "id": "<model>",
+      "reasoningEffort": "<reasoningEffortLevel, `dynamic` if unknown>"
+    },
+    "droidVersion": "<current droid version, current date if unknown>"
+  }
+  ```
+
+  Notes: `N` = app count from the app discovery phase (`1` for this repo). `apps` required for monorepo map. `null` only on criteria marked `[Skippable]`. Count is versioned by tool schema (currently 84 in full mode as of 2026-09-01); for future `full|lite` param submit exactly keys for that mode. Do not copy previous report verbatim — re-verify all signals on current checkout, then submit current object.
+
+- Then output human summary with exactly this structure:
+
+  ```markdown
+  # Level <Number>
+
+  # Applications
+
+  1. . - <description>
+
+  # Criteria (grouped: Mission Readiness, Style & Validation, Build System, Testing, Documentation, Dev Environment, Debugging & Observability, Security) # currently 8 groups (1 Mission Readiness + 7 domain groups as of 2026-09-01); versioned by report schema
+
+  Mission Readiness: X/Y - <rationale>
+
+  - <criterion>: X/Y - <rationale>
+
+  Next Group: X/Y - <rationale>
+
+  - <criterion>: X/Y - <rationale>  
+    .
+    .
+    .
+    Last Group: X/Y - <rationale>
+  - <criterion>: X/Y - <rationale>
+
+  # Action Items (2-3 next steps)
+
+  # Changes Since Last Report (only deltas)
+
+  ---
+
+  View the full report: https://app.factory.ai/analytics/readiness/https%253A%252F%252Fgithub.com%252Ffakhriaunur%252Fmodvitals
+  ```
+
+  Mission Readiness comprises 15 criteria in this order:
+
+  1. `agents_md` (AGENTS.md File) — BASIC
+  2. `env_template` (Environment Template) — BASIC
+  3. `single_command_setup` (Single Command Setup) — INTERMEDIATE
+  4. `local_services_setup` (Local Services Setup) — BASIC
+  5. `devcontainer` (Dev Container) — BASIC
+  6. `build_cmd_doc` (Build Command Documentation) — BASIC
+  7. `lint_config` (Linter Configuration) — BASIC
+  8. `type_check` (Type Checker) — BASIC
+  9. `unit_tests_exist` (Unit Tests Exist) — BASIC
+  10. `unit_tests_runnable` (Unit Tests Runnable) — BASIC
+  11. `integration_tests_exist` (Integration Tests Exist) — INTERMEDIATE
+  12. `interactive_qa_exists` (Interactive QA Exists) — BASIC
+  13. `interactive_qa_runnable` (Interactive QA Runnable) — INTERMEDIATE
+  14. `structured_logging` (Structured Logging) — BASIC
+  15. `devcontainer_runnable` (Devcontainer Runnable) — INTERMEDIATE (skippable → N/A if no DevContainer)
+
+  Scored as X/15 (or X/14 + N/A). Resolve Mission Readiness first; remaining groups show full domain breakdown.
+
+### Validation Checklist (must pass before tool call)
+
+- [ ] Report has exactly the keys required by current tool schema (no extras/missing; currently 84 = 44 repo + 40 app in full mode)
+- [ ] Denominators: Repository Scope = 1, Application Scope = N
+- [ ] `apps`, `branch`, `commitHash`, `hasLocalChanges` reflect _current_ checkout (not stale reference)
+- [ ] Score recalculated from submitted object; previous report used only as hint
+
+### Restore vs Re-run
+
+- `restore the report` / `store report again`: re-collect git metadata and re-call the tool with the _current_ criteria-value object (per current schema). Do not reuse stale commit hash or `hasLocalChanges` flag.
 
 ## Common Pitfalls
 
